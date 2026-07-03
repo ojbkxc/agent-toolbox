@@ -67,18 +67,14 @@ public class PythonBridge {
 
         // 模式 1: JNI
         if (jniLoaded) {
-            try {
-                android.util.Log.i("PythonBridge", "JNI 初始化: " + pythonHome.getAbsolutePath());
-                int ret = nativeInit(pythonHome.getAbsolutePath());
-                android.util.Log.i("PythonBridge", "JNI 返回: " + ret);
-                if (ret == 0) return true;
-                throw new Exception("nativeInit 返回 " + ret + "，PYTHONHOME=" + pythonHome.getAbsolutePath()
-                    + "，stdlib存在=" + isStdlibReady(pythonHome));
-            } catch (Throwable e) {
-                android.util.Log.e("PythonBridge", "JNI 失败: " + e.getMessage());
-                jniLoaded = false;
-                // 不抛出，继续尝试进程模式
-            }
+            android.util.Log.i("PythonBridge", "JNI 初始化: " + pythonHome.getAbsolutePath());
+            int ret = nativeInit(pythonHome.getAbsolutePath());
+            android.util.Log.i("PythonBridge", "JNI 返回: " + ret);
+            if (ret == 0) return true;
+            String cError = nativeGetLastError();
+            android.util.Log.e("PythonBridge", "JNI 初始化失败: " + cError);
+            jniLoaded = false;
+            // 不抛出，继续尝试进程模式
         }
 
         // 模式 2: 进程模式
@@ -146,6 +142,7 @@ public class PythonBridge {
     private static native String nativeExec(String code);
     private static native void nativeShutdown();
     private static native boolean nativeIsInitialized();
+    private static native String nativeGetLastError();
 
     /** 供 C 代码调用，获取 PYTHONHOME 路径 */
     public static String getPythonHome() {

@@ -31,7 +31,7 @@ android {
     sourceSets {
         main {
             java.srcDirs = ['src']
-            jniLibs.srcDirs = ['app/src/main/jniLibs']
+            jniLibs.srcDirs = ['libs', 'app/src/main/jniLibs']
             assets.srcDirs = ['assets']
             res.srcDirs = ['res']
             manifest.srcFile 'AndroidManifest.xml'

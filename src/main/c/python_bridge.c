@@ -121,6 +121,7 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeInit(
     setenv("PYTHONHOME", home_utf8, 1);
     setenv("PYTHONNOUSERSITE", "1", 1);
     setenv("PYTHONDONTWRITEBYTECODE", "1", 1);
+    setenv("PYTHONEXECUTABLE", "/usr/bin/python3", 1);  // 让 sys.executable 非空，绕过 _android_support.init_streams()
 
     // 预初始化（isolated 模式，不读系统配置）
     LOGI("nativeInit: Py_PreInitialize (isolated)...");

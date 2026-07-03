@@ -135,6 +135,13 @@ public class PythonBridge {
     private static native void nativeShutdown();
     private static native boolean nativeIsInitialized();
 
+    /**
+     * 供 native 层回调获取 Python Home 路径
+     */
+    private static String getPythonHome() {
+        return pythonHome != null ? pythonHome.getAbsolutePath() : null;
+    }
+
     // ===== 进程模式 =====
 
     /**

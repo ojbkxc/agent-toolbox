@@ -206,9 +206,7 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeInit(
 
     (*env)->ReleaseStringUTFChars(env, home, home_utf8);
 
-    /* 验证核心模块 */
-    PyGILState_STATE gstate = PyGILState_Ensure();
-
+    /* 验证核心模块 (GIL 由 Py_Initialize 持有，直接使用) */
     PyObject *mod;
     if ((mod = PyImport_ImportModule("encodings"))) {
         Py_DECREF(mod);
@@ -225,7 +223,10 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeInit(
         PyErr_Clear();
     }
 
-    PyGILState_Release(gstate);
+    /* 关键: 释放 Py_Initialize 持有的 GIL，使用 PyEval_SaveThread
+     * 后续 nativeExec 通过 PyGILState_Ensure/Release 管理 GIL */
+    PyEval_SaveThread();
+    LOGI("nativeInit: GIL 已释放 (PyEval_SaveThread)");
 
     python_initialized = 1;
     LOGI("nativeInit: Python 初始化完成!");
@@ -248,10 +249,12 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeExec(
             "[错误] Python 未初始化。请重启应用或查看 logcat (PythonBridge-C)");
     }
 
-    PyGILState_STATE gstate = PyGILState_Ensure();
-
     const char *code_utf8 = (*env)->GetStringUTFChars(env, code, NULL);
     LOGI("nativeExec: 执行代码 (长度=%d)", (int)strlen(code_utf8));
+
+    LOGI("nativeExec: PyGILState_Ensure...");
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    LOGI("nativeExec: GIL 已获取");
 
     PyObject *main_module = PyImport_AddModule("__main__");
     PyObject *globals = PyModule_GetDict(main_module);
@@ -259,6 +262,7 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeExec(
     PyObject *code_obj = PyUnicode_FromString(code_utf8);
     PyDict_SetItemString(globals, "_user_code", code_obj);
     Py_DECREF(code_obj);
+    LOGI("nativeExec: 用户代码已设置");
 
     const char *wrapper =
         "import sys, io, traceback\n"
@@ -282,7 +286,9 @@ Java_com_example_agenttoolbox_tools_PythonBridge_nativeExec(
         "    sys.stdout = _old_stdout\n"
         "    sys.stderr = _old_stderr\n";
 
+    LOGI("nativeExec: PyRun_String...");
     PyObject *result = PyRun_String(wrapper, Py_file_input, globals, globals);
+    LOGI("nativeExec: PyRun_String 返回 %p", result);
 
     jstring ret;
     if (result == NULL) {

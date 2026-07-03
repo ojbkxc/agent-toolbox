@@ -21,10 +21,10 @@ import java.lang.reflect.Method;
  */
 public class PythonBridge {
 
-    private static final String STDLIB_ASSET_DIR = "python/stdlib";
+    private static final String STDLIB_ASSET_DIR = "python/stdlib/python3.14";
     private static final String PYTHON_DIR_NAME = "python";
     private static final String VERSION_FILE = ".python_version";
-    private static final String EXPECTED_VERSION = "3.14.6-v4";
+    private static final String EXPECTED_VERSION = "3.14.6-v5";
 
     // JNI 模式
     private static boolean jniLoaded = false;
@@ -65,7 +65,7 @@ public class PythonBridge {
             android.util.Log.i("PythonBridge", "解压标准库到 " + pythonHome.getAbsolutePath() + " ...");
             extractStdlib(context);
             writeFile(versionFile, EXPECTED_VERSION);
-            android.util.Log.i("PythonBridge", "标准库解压完成，os.py=" + new File(pythonHome, "os.py").exists());
+            android.util.Log.i("PythonBridge", "标准库解压完成，os.py=" + new File(pythonHome, "lib/python3.14/os.py").exists());
         }
 
         // JNI 内嵌模式

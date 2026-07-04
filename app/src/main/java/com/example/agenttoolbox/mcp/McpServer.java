@@ -299,7 +299,11 @@ public class McpServer {
         /**
          * 截断日志以防止过长日志
          */
-        private String truncateForLogging(String text, int maxLen) {
+                private String truncateForLogging(String text, int maxLen) {
+            if (text == null) return "(null)";
+            return text;  // 不截断，记录完整内容
+        }
+        private String truncateForLogging_DISABLED(String text, int maxLen) {
             if (text == null) return "";
             if (text.length() > maxLen) {
                 return text.substring(0, maxLen) + "... (共 " + text.length() + " 字符)";
@@ -385,7 +389,7 @@ public class McpServer {
                 log("════════════════════════════════════════════════════════════");
                 log("▶ 收到聊天 API 请求: " + path);
                 log("  ├─ 请求体长度: " + (requestBody == null ? 0 : requestBody.length()) + " 字符");
-                log("  └─ 请求体内容: " + truncateForLogging(requestBody, 4096));
+                log("[MCP] 请求体:\n" + requestBody);
                 log("════════════════════════════════════════════════════════════");
                 handleChatRequest(path, requestBody, out);
                 return;
@@ -675,7 +679,7 @@ public class McpServer {
                     } else {
                         log("DeepSeek 流式聊天请求: 完整消息=" + message);
                         log("  ├─ 消息长度: " + message.length() + " 字符");
-                        log("  ├─ 消息前50字符: " + (message.length() > 50 ? message.substring(0, 50) + "..." : message));
+                        log("[MCP] 用户消息 (" + message.length() + " 字符): " + message);
                         log("  ├─ 桥接器状态: " + (bridge.isRegistered() ? "已注册" : "未注册"));
                         log("  └─ 请求ID: stream-" + System.currentTimeMillis());
 
@@ -778,9 +782,9 @@ public class McpServer {
                                 log("  [第一轮] 添加系统提示词，消息总长度: " + messageToSend.length() + " 字符");
                             }
                             
-                            log("══════════ 对话轮次 " + currentRound + "/" + maxRounds + " 开始 ══════════");
-                            log("  ├─ 输入消息长度: " + (messageToSend == null ? 0 : messageToSend.length()) + " 字符");
-                            log("  ├─ 输入消息前80字符: " + (messageToSend == null ? "(null)" : (messageToSend.length() > 80 ? messageToSend.substring(0, 80) + "..." : messageToSend)));
+                            log("\n[轮次 " + currentRound + "/" + maxRounds + "] ═══ 开始 ═══");
+                            
+                            log("[LLM] 发送给 LLM (" + (messageToSend == null ? 0 : messageToSend.length()) + " 字符)");
                             log("  └─ 已完成轮数: " + (currentRound - 1) + "/" + maxRounds);
 
                             final CountDownLatch roundLatch = new CountDownLatch(1);
@@ -821,7 +825,7 @@ public class McpServer {
                                             boolean isToolCall = isToolCallJson(chunk);
                                             log("  [轮次" + currentRound + "] 收到chunk: 长度=" + (chunk == null ? 0 : chunk.length())
                                                 + " isToolCall=" + isToolCall
-                                                + " 内容=" + truncateForLogging(chunk, 200));
+                                                + " 内容=" + chunk);
 
                                             // 防止心跳中断工具调用 JSON 流：当检测到工具调用 JSON 时，禁用心跳
                                             if (isToolCall && !inToolCallStream.get()) {
@@ -910,7 +914,7 @@ public class McpServer {
                                             // P2 修复：记录 LLM 完整回复（非工具调用时），使用截断防止过长日志
                                             if (!isToolCall && finalReply.length() > 0) {
                                                 log("  [轮次" + currentRound + "] LLM最终回复结构: " + analyzeReplyStructure(finalReply));
-                                                String logReply = truncateForLogging(finalReply, 4096);
+                                                String logReply = finalReply;
                                                 log("  [轮次" + currentRound + "] LLM最终回复内容: " + logReply);
                                             }
                                             JSONObject j = new JSONObject();
@@ -919,7 +923,7 @@ public class McpServer {
                                             j.put("isToolCall", isToolCall);
                                             j.put("canContinue", canContinue);
                                             writeEventChunk(out, "done", j.toString());
-                                            log("  [轮次" + currentRound + "] 轮次完成: 长度=" + finalReply.length()
+                                            log("[轮次 " + currentRound + "] 完成: 长度=" + finalReply.length()
                                                 + " 类型=" + (isToolCall ? "【工具调用】" : "【文本回复】")
                                                 + " canContinue=" + canContinue);
                                         } catch (Exception e) {
@@ -998,7 +1002,7 @@ public class McpServer {
                             JSONObject replyJson = extractJsonObject(reply);
                             if (replyJson == null) {
                                 log("  [轮次" + currentRound + "] ⚠ 警告: 无法从回复中提取JSON对象");
-                                log("  [轮次" + currentRound + "]   └─ 回复前200字符: " + truncateForLogging(reply, 200));
+                                log("[LLM] 回复全文 (" + reply.length() + " 字符):\n" + reply);
                                 finalDone = true;
                                 log("  [轮次" + currentRound + "] ═══ 对话完成 ═══");
                                 break;
@@ -1037,15 +1041,15 @@ public class McpServer {
                             JSONObject paramsObj = replyJson.optJSONObject("params");
                             String toolNameForLog = paramsObj != null ? paramsObj.optString("name", "") : "";
                             log("  [轮次" + currentRound + "] 执行工具: " + toolNameForLog);
-                            log("  [轮次" + currentRound + "] LLM tools/call 请求 JSON: " + replyJson.toString());
+                            log("[TOOL] 调用请求:\n" + replyJson.toString(2));
 
                             toolCallCount++;
                             long toolStartTime = System.currentTimeMillis();
                             String toolResult = executeToolCall(replyJson);
                             long toolCostMs = System.currentTimeMillis() - toolStartTime;
 
-                            log("  [轮次" + currentRound + "] 工具执行完成: 耗时=" + toolCostMs + "ms");
-                            log("  [轮次" + currentRound + "] 工具原始返回: " + truncateForLogging(toolResult, 500));
+                            log("[TOOL] 执行完成: 耗时=" + toolCostMs + "ms");
+                            log("[TOOL] 返回结果 (" + toolResult.length() + " 字符):\n" + toolResult);
                             if (toolResult == null || toolResult.isEmpty()) {
                                 toolResult = "工具执行返回空结果";
                             }
@@ -1071,7 +1075,7 @@ public class McpServer {
                                 // LLM 可能自创 id（如 1、10 等），服务端始终回会话 ID 以"纠正"链路
                                 toolResultMsg.put("id", conversationId);
                             } catch (Exception ignored) {}
-                            log("  [轮次" + currentRound + "] 服务端工具结果 JSON: " + toolResultMsg.toString());
+                            log("[TOOL] 返回给 LLM:\n" + toolResultMsg.toString(2));
                             currentMessage = toolResultMsg.toString();
 
                             // 防止循环：工具执行后，附加指令让 LLM 用文本回复用户

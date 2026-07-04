@@ -281,7 +281,7 @@ public class DeepSeekChatBridge {
             "    if (finished) return;\n" +
             "    finished = true;\n" +
             "    if (window[__prefix + 'poll']) clearInterval(window[__prefix + 'poll']);\n" +
-            "    Android.log('[DEBUG][' + __rid + '] pollOnce: finish, len=' + (reply ? reply.length : 0));\n" +
+            "    Android.log('[JS] 完成: 长度=' + (reply ? reply.length : 0) + '\n' + (reply || '').substring(0, 500));\n" +
             "    Android.onDeepSeekReply(__rid, reply || '');\n" +
             "  }\n" +
             "\n" +
@@ -292,7 +292,7 @@ public class DeepSeekChatBridge {
             "\n" +
             "    // Timeout: 5 min\n" +
             "    if (pollCount > 600) {\n" +
-            "      Android.log('[DEBUG][' + __rid + '] pollOnce: timeout');\n" +
+            "      Android.log('[JS] 超时: pollCount=' + pollCount);\n" +
             "      finish('');\n" +
             "      return;\n" +
             "    }\n" +
@@ -343,12 +343,12 @@ public class DeepSeekChatBridge {
             "\n" +
             "    // Step 7: Determine type and finish\n" +
             "    var isToolCall = parsed.method && parsed.method === 'tools/call';\n" +
-            "    Android.log('[DEBUG][' + __rid + '] pollOnce: JSON parsed, method=' + (parsed.method || 'none') + ', isToolCall=' + isToolCall);\n" +
+            "    Android.log('[JS] JSON 解析成功: method=' + (parsed.method || 'none') + ', 长度=' + jsonStr.length);\n" +
             "    finish(jsonStr);\n" +
             "  }\n" +
             "\n" +
             "  window[__prefix + 'poll'] = setInterval(pollOnce, 500);\n" +
-            "  Android.log('[DEBUG][' + __rid + '] observer started');\n" +
+            "  Android.log('[JS] 轮询启动, 每 500ms');\n" +
             "  return 'observer_started_' + __rid;\n" +
             "})()";// ========== Step 2: 填写消息并发送 ==========
         final String sendScript =

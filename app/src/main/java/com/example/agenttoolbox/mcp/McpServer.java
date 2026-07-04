@@ -680,7 +680,7 @@ public class McpServer {
                         log("[SEND] 消息=" + message);
                         log("[MCP] 消息长度: " + message.length() + " 字符");
                         log("[MCP] 用户消息 (" + message.length() + " 字符): " + message);
-                        log("[MCP] 桥接器状态: " + (bridge.isRegistered() ? "已注册" : "未注册"));
+                        log("[INIT] 桥接: " + (bridge.isRegistered() ? "已注册" : "未注册"));
                         log("[MCP] 请求ID: stream-" + System.currentTimeMillis());
 
                         // SSE 头部
@@ -751,7 +751,7 @@ public class McpServer {
                         int toolCallCount = 0; // 防止工具调用循环
                         // 本次对话的唯一会话 ID，贯穿整条链路（initialize / tools/call / 工具结果 / 最终回复）
                         final long conversationId = conversationIdSeq.incrementAndGet();
-                        log("[INIT] 会话ID:  + conversationId);
+                        log("[INIT] 会话ID: " + conversationId);
 
                         while (round < maxRounds && !finalDone) {
                             round++;
@@ -785,7 +785,7 @@ public class McpServer {
                             log("[ROUND] " + currentRound + "/" + maxRounds + " 开始");
                             
                             log("[LLM] 发送给 LLM (" + (messageToSend == null ? 0 : messageToSend.length()) + " 字符)");
-                            log("[MCP] 已完成轮数: " + (currentRound - 1) + "/" + maxRounds);
+                            log("[ROUND] 进度: " + (currentRound - 1) + "/" + maxRounds);
 
                             final CountDownLatch roundLatch = new CountDownLatch(1);
                             final AtomicReference<String> roundReplyRef = new AtomicReference<>();
@@ -818,19 +818,19 @@ public class McpServer {
                                                 return;
                                             }
                                             if (chunk != null && chunk.startsWith("[DEBUG]")) {
-                                                log("  [轮次" + currentRound + "] [DEBUG] " + chunk);
+                                                log("[DEBUG] " + chunk);
                                                 return;
                                             }
                                             // 检测是否为工具调用 JSON（避免把 JSON 当作普通文本塞给用户）
                                             boolean isToolCall = isToolCallJson(chunk);
-                                            log("  [轮次" + currentRound + "] 收到chunk: 长度=" + (chunk == null ? 0 : chunk.length())
+                                            log("[LLM] chunk长度=" + (chunk == null ? 0 : chunk.length())
                                                 + " isToolCall=" + isToolCall
                                                 + " 内容=" + chunk);
 
                                             // 防止心跳中断工具调用 JSON 流：当检测到工具调用 JSON 时，禁用心跳
                                             if (isToolCall && !inToolCallStream.get()) {
                                                 inToolCallStream.set(true);
-                                                log("  [轮次" + currentRound + "] 【P3修复】检测到工具调用 JSON 流开始，禁用心跳 (chunk长度=" + (chunk == null ? 0 : chunk.length()) + ")");
+                                                log("[DEBUG] 工具调用流开始 (长度=" + (chunk == null ? 0 : chunk.length()) + ")");
                                                 log("[DEBUG] jsonrpc:  + (chunk.indexOf("\"jsonrpc\":") != -1 ? "✓" : "✗"));
                                                 log("[DEBUG] method:  + (chunk.indexOf("\"method\"") != -1 ? "✓" : "✗"));
                                                 log("[DEBUG] tools/call:  + (chunk.indexOf("\"tools/call\"") != -1 ? "✓" : "✗"));
@@ -842,11 +842,11 @@ public class McpServer {
                                             j.put("isToolCall", isToolCall);
                                             writeEventChunk(out, "chunk", j.toString());
                                         } catch (Exception e) {
-                                            log("  [轮次" + currentRound + "] chunk处理异常: "
+                                            log("[LLM] chunk异常: "
                                                 + "类型=" + e.getClass().getName()
                                                 + " msg=" + (e.getMessage() == null ? "(null)" : e.getMessage())
                                                 + " chunk=" + chunk);
-                                            log("  [轮次" + currentRound + "] 堆栈: " + android.util.Log.getStackTraceString(e));
+                                            log("[DEBUG] 堆栈: " + android.util.Log.getStackTraceString(e));
                                         }
                                     }
 
@@ -862,11 +862,11 @@ public class McpServer {
                                             }
                                             // 工具调用 JSON 流结束，恢复心跳
                                             if (inToolCallStream.getAndSet(false)) {
-                                                log("  [轮次" + currentRound + "] 【P3修复】工具调用 JSON 流已完成，恢复心跳");
+                                                log("[DEBUG] 工具调用流完成");
                                             }
 
                                             boolean isToolCall = isToolCallJson(reply);
-                                            log("  [轮次" + currentRound + "] 回复类型检测: isToolCall=" + isToolCall
+                                            log("[LLM] isToolCall=" + isToolCall
                                                 + " (jsonrpc=" + (reply != null && reply.indexOf("\"jsonrpc\":") != -1) + ")"
                                                 + " (method=" + (reply != null && reply.indexOf("\"method\"") != -1) + ")"
                                                 + " (tools/call=" + (reply != null && reply.indexOf("\"tools/call\"") != -1) + ")");
@@ -900,13 +900,13 @@ public class McpServer {
                                                             // result 直接是字符串
                                                             String extractedContent = (String) resultObj;
                                                             if (!extractedContent.isEmpty()) {
-                                                                log("  [轮次" + currentRound + "] 提取 JSON-RPC result (string)，长度=" + extractedContent.length());
+                                                                log("[LLM] 提取result(string): " + extractedContent.length());
                                                                 finalReply = extractedContent;
                                                             }
                                                         }
                                                     }
                                                 } catch (Exception extractEx) {
-                                                    log("  [轮次" + currentRound + "] 提取 result.content 失败: " + extractEx.getMessage() + "，使用原始回复");
+                                                    log("[LLM] 提取result失败: " + extractEx.getMessage() + "，使用原始回复");
                                                 }
                                             }
                                             roundReplyRef.set(finalReply);
@@ -923,15 +923,15 @@ public class McpServer {
                                             j.put("isToolCall", isToolCall);
                                             j.put("canContinue", canContinue);
                                             writeEventChunk(out, "done", j.toString());
-                                            log("[轮次 " + currentRound + "] 完成: 长度=" + finalReply.length()
+                                            log("[ROUND] 完成: 长度=" + finalReply.length()
                                                 + " 类型=" + (isToolCall ? "【工具调用】" : "【文本回复】")
                                                 + " canContinue=" + canContinue);
                                         } catch (Exception e) {
-                                            log("  [轮次" + currentRound + "] onDone处理异常: "
+                                            log("[LLM] onDone异常: "
                                                 + "类型=" + e.getClass().getName()
                                                 + " msg=" + (e.getMessage() == null ? "(null)" : e.getMessage())
                                                 + " reply=" + reply);
-                                            log("  [轮次" + currentRound + "] 堆栈: " + android.util.Log.getStackTraceString(e));
+                                            log("[DEBUG] 堆栈: " + android.util.Log.getStackTraceString(e));
                                         }
                                         roundLatch.countDown();
                                     }
@@ -940,23 +940,23 @@ public class McpServer {
                                     public void onError(String error) {
                                         try {
                                             roundErrorRef.set(error);
-                                            log("  [轮次" + currentRound + "] onError 触发: " + error);
+                                            log("[LLM] onError: " + error);
                                             // 错误时恢复心跳，避免心跳被永久禁用
                                             if (inToolCallStream.getAndSet(false)) {
-                                                log("  [轮次" + currentRound + "] 【P3修复】工具调用 JSON 流发生错误，恢复心跳: " + error);
+                                                log("[LLM] 工具调用流错误: " + error);
                                             }
 
                                             JSONObject j = new JSONObject();
                                             j.put("error", error == null ? "未知错误" : error);
                                             j.put("round", currentRound);
                                             writeEventChunk(out, "error", j.toString());
-                                            log("  [轮次" + currentRound + "] 错误: " + error);
+                                            log("[LLM] 错误: " + error);
                                         } catch (Exception e) {
-                                            log("  [轮次" + currentRound + "] onError处理异常: "
+                                            log("[LLM] onError异常: "
                                                 + "类型=" + e.getClass().getName()
                                                 + " msg=" + (e.getMessage() == null ? "(null)" : e.getMessage())
                                                 + " error=" + error);
-                                            log("  [轮次" + currentRound + "] 堆栈: " + android.util.Log.getStackTraceString(e));
+                                            log("[DEBUG] 堆栈: " + android.util.Log.getStackTraceString(e));
                                         }
                                         roundLatch.countDown();
                                     }
@@ -969,7 +969,7 @@ public class McpServer {
                                 // 注意：实际轮次结束由JavaScript端的pollOnce触发，这里只是兜底
                                 long waitSeconds = 600; // 默认10分钟
                                 if (round > 1) waitSeconds = 1800; // 后续轮次可能是工具调用，给30分钟
-                                log("轮次 " + currentRound + " 等待LLM回复（最大" + waitSeconds + "秒）");
+                                log("[ROUND] 等待LLM (最大" + waitSeconds + "秒）");
                                 completed = roundLatch.await(waitSeconds, TimeUnit.SECONDS);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
@@ -978,7 +978,7 @@ public class McpServer {
 
                             if (!completed) {
                                 // 超时：尝试从JavaScript端获取任何已有内容
-                                log("轮次 " + currentRound + " LLM回复超时（roundLatch.await超时）");
+                                log("[ROUND] LLM回复超时");
                                 JSONObject j = new JSONObject();
                                 j.put("error", "本轮回复超时");
                                 writeEventChunk(out, "error", j.toString());
@@ -986,7 +986,7 @@ public class McpServer {
                             }
 
                             if (roundErrorRef.get() != null) {
-                                log("  [轮次" + currentRound + "] 检测到错误: " + roundErrorRef.get() + "，结束对话");
+                                log("[ROUND] 错误: " + roundErrorRef.get() + "，结束对话");
                                 break;
                             }
 
@@ -1005,7 +1005,7 @@ public class McpServer {
                             // 提取并解析 JSON 回复（JSON-RPC 2.0）
                             JSONObject replyJson = extractJsonObject(reply);
                             if (replyJson == null) {
-                                log("  [轮次" + currentRound + "] ⚠ 警告: 无法从回复中提取JSON对象");
+                                log("[LLM] 无法提取JSON");
                                 log("[LLM] 回复全文 (" + reply.length() + " 字符):\n" + reply);
                                 finalDone = true;
                                 log("[DONE] 对话完成");
@@ -1017,7 +1017,7 @@ public class McpServer {
                             boolean hasResult = replyJson.has("result");
                             boolean hasError = replyJson.has("error");
                             Object rpcId = replyJson.opt("id");
-                            log("  [轮次" + currentRound + "] 解析成功: method=" + method
+                            log("[LLM] 解析: method=" + method
                                 + " hasResult=" + hasResult + " hasError=" + hasError + " id=" + rpcId);
 
                             if (hasError) {
@@ -1036,7 +1036,7 @@ public class McpServer {
 
                             if (!"tools/call".equals(method)) {
                                 // 既不是工具调用，也没有 result/error：当作文本回复处理
-                                log("  [轮次" + currentRound + "] ⚠ 未知 JSON-RPC 消息: method=" + method + "，当作文本回复处理");
+                                log("[LLM] 未知消息: method=" + method + "，当作文本回复处理");
                                 finalDone = true;
                                 break;
                             }

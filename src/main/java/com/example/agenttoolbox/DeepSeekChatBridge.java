@@ -260,6 +260,23 @@ public class DeepSeekChatBridge {
             "  // 记录发送前已有的 AI 回复数（baseline）\n" +
             "  var initialAiCount = document.querySelectorAll('.ds-assistant-message-main-content').length;\n" +
             "  Android.log('[JS] 初始AI回复数=' + initialAiCount + ', url=' + window.location.href);\n" +
+            "  // 选择器探测：输出多种可能选择器的匹配数，定位正确的 AI 回复元素\n" +
+            "  var probeSelectors = [\n" +
+            "    '.ds-assistant-message-main-content',\n" +
+            "    '[class*=\"ds-assistant-message\"]',\n" +
+            "    '[class*=\"assistant-message\"]',\n" +
+            "    '.ds-markdown--block',\n" +
+            "    '.ds-markdown',\n" +
+            "    '[class*=\"markdown\"]',\n" +
+            "    '[class*=\"message-content\"]',\n" +
+            "    '[class*=\"content\"]'\n" +
+            "  ];\n" +
+            "  var probeResult = [];\n" +
+            "  for (var pi = 0; pi < probeSelectors.length; pi++) {\n" +
+            "    var pcount = document.querySelectorAll(probeSelectors[pi]).length;\n" +
+            "    probeResult.push(probeSelectors[pi] + '=' + pcount);\n" +
+            "  }\n" +
+            "  Android.log('[JS] 选择器探测: ' + probeResult.join(', '));\n" +
             "\n" +
             "  function isSendButtonReady() {\n" +
             "    // 只检查发送按钮元素内部的 path，不遍历全页 SVG\n" +

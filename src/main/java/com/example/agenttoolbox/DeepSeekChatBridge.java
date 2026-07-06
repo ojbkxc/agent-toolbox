@@ -363,7 +363,7 @@ public class DeepSeekChatBridge {
             "    }\n" +
             "\n" +
             "    if (!parsed) {\n" +
-            "      Android.log('[JS] JSON 解析失败, rawText长度=' + rawText.length + ' 前100字=' + rawText.substring(0, 100));\n" +
+            "      Android.log('[JS] JSON 解析失败, rawText长度=' + rawText.length + '\n' + rawText);\n" +
             "      finish(rawText);\n" +
             "      return;\n" +
             "    }\n" +

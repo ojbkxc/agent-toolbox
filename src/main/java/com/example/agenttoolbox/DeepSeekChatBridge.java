@@ -384,8 +384,8 @@ public class DeepSeekChatBridge {
             "    } else if (aiMsgs.length > 0) {\n" +
             "      var lastAi = aiMsgs[aiMsgs.length - 1];\n" +
             "      var currentLen = (lastAi.innerText || lastAi.textContent || '').trim().length;\n" +
-            "      if (currentLen > initialLastAiLen) {\n" +
-            "        hasNewContent = true;  // 最后一个元素内容变化（替换/增长）\n" +
+            "      if (currentLen !== initialLastAiLen) {\n" +
+            "        hasNewContent = true;  // 最后一个元素内容变化（替换，可能变短）\n" +
             "      }\n" +
             "    }\n" +
             "    if (!hasNewContent) return;\n" +

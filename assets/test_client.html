@@ -890,6 +890,194 @@
         .md-body input[type="checkbox"] {
             margin-right: 6px;
         }
+
+        /* ===== Plan 面板 ===== */
+        .plan-panel {
+            background: #fafcff;
+            border-radius: 20px;
+            border: 1px solid #e9edf2;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 420px;
+        }
+        .plan-panel .panel-header {
+            padding: 10px 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            font-size: 14px;
+            color: #1e293b;
+            flex-shrink: 0;
+        }
+        .plan-panel .panel-body {
+            padding: 10px 14px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .plan-empty {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+            padding: 20px 0;
+        }
+        .plan-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+        .plan-progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .plan-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #22c55e);
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+        .plan-progress-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            white-space: nowrap;
+            min-width: 48px;
+            text-align: right;
+        }
+        .plan-task-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 10px;
+            background: white;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            font-size: 13px;
+            transition: 0.15s;
+            cursor: default;
+        }
+        .plan-task-item:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+        .plan-task-status {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+        .plan-task-status.pending {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border: 1.5px solid #cbd5e1;
+        }
+        .plan-task-status.in_progress {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1.5px solid #93c5fd;
+            animation: pulse-status 1.5s ease-in-out infinite;
+        }
+        .plan-task-status.completed {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1.5px solid #86efac;
+        }
+        .plan-task-status.failed {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1.5px solid #fca5a5;
+        }
+        .plan-task-status.paused {
+            background: #fef3c7;
+            color: #d97706;
+            border: 1.5px solid #fcd34d;
+        }
+        @keyframes pulse-status {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.3); }
+            50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0); }
+        }
+        .plan-task-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .plan-task-content {
+            color: #1e293b;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .plan-task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .plan-task-tag {
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 20px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .plan-task-tag.priority-high {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .plan-task-tag.priority-medium {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .plan-task-tag.priority-low {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .plan-task-tag.dep {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+        .plan-task-tag.retry {
+            background: #fce7f3;
+            color: #db2777;
+        }
+        .plan-task-fail-reason {
+            font-size: 11px;
+            color: #dc2626;
+            margin-top: 3px;
+            background: #fef2f2;
+            padding: 3px 8px;
+            border-radius: 6px;
+            line-height: 1.3;
+        }
+        .plan-summary {
+            font-size: 12px;
+            color: #64748b;
+            padding: 6px 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            line-height: 1.5;
+            border: 1px solid #e2e8f0;
+        }
+        .plan-history-hint {
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+            padding: 4px 0;
+        }
 </style>
 </head>
 <body>
@@ -940,6 +1128,17 @@
                         <ul id="toolsList" class="tools-list">
                             <li class="text-center text-muted" style="padding: 16px 0; font-size:13px;">连接后自动加载</li>
                         </ul>
+                    </div>
+                </div>
+
+                <!-- 待办计划 -->
+                <div class="plan-panel" id="planPanel">
+                    <div class="panel-header">
+                        待办计划
+                        <span class="count" id="planCount">-</span>
+                    </div>
+                    <div class="panel-body" id="planBody">
+                        <div class="plan-empty">等待计划加载…</div>
                     </div>
                 </div>
 
@@ -1223,6 +1422,127 @@
         function clearChat() {
             chatMessages.innerHTML =
                 `<div class="message system"><div class="message-avatar">i</div><div class="message-content"><div class="message-label">系统</div><div class="message-bubble" style="line-height:1.7;"><strong>👋 欢迎使用 MCP 工具箱</strong><br><br>连接服务后，你可以通过自然语言或命令调用以下 <strong>10 个工具</strong>：<br><br><strong>📁 文件类</strong><br><code>file_list</code> 列目录 &nbsp;|&nbsp;<code>file_read</code> 读文件（支持行号范围）<br><code>file_write</code> 写文件（6种模式：写入/插入/替换/删除/追加行/前置行）<br><br><strong>🌐 网络类</strong><br><code>http_request</code> HTTP 请求（GET/POST/PUT/DELETE）&nbsp;|&nbsp;<code>web</code> 网页抓取（标题/正文/HTML/JSON）<br><br><strong>⚙️ 执行类</strong><br><code>shell</code> Shell 命令 &nbsp;|&nbsp;<code>cmd</code> Android 系统服务命令<br><code>python</code> Python 脚本 &nbsp;|&nbsp;<code>sh</code> Shell 脚本文件<br><br><strong>🔢 计算类</strong><br><code>math_calculator</code> 数学表达式计算<br><br>💡 输入 <code>/help</code> 查看完整命令用法，点击侧边栏工具可快速填入。</div></div></div>`;
+        }
+
+        // ============================================================
+        //  Plan 面板渲染
+        // ============================================================
+        let planState = null;
+
+        function renderPlan(planData) {
+            if (!planData) {
+                planState = null;
+                renderPlanEmpty();
+                return;
+            }
+            planState = planData;
+
+            const body = document.getElementById('planBody');
+            const countEl = document.getElementById('planCount');
+            if (!body || !countEl) return;
+
+            const tasks = planData.tasks || [];
+            const total = planData.total || tasks.length;
+            const completed = planData.completed || 0;
+            const failed = planData.failed || 0;
+            const action = planData.action || '';
+            const summary = planData.summary || '';
+
+            countEl.textContent = completed + '/' + total;
+
+            let html = '';
+
+            // 进度条
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            html += '<div class="plan-progress">';
+            html += '<div class="plan-progress-bar"><div class="plan-progress-fill" style="width:' + pct + '%"></div></div>';
+            html += '<div class="plan-progress-text">' + pct + '%</div>';
+            html += '</div>';
+
+            // 任务列表
+            if (tasks.length === 0) {
+                html += '<div class="plan-empty">暂无任务</div>';
+            } else {
+                // 排序：in_progress 最前，然后 pending，然后 completed/failed
+                var sorted = tasks.slice().sort(function(a, b) {
+                    var order = { 'in_progress': 0, 'pending': 1, 'paused': 2, 'failed': 3, 'completed': 4 };
+                    return (order[a.status] || 5) - (order[b.status] || 5);
+                });
+
+                for (var i = 0; i < sorted.length; i++) {
+                    var t = sorted[i];
+                    html += renderPlanTask(t);
+                }
+            }
+
+            // 摘要
+            if (summary) {
+                html += '<div class="plan-summary">' + escapeHtml(summary) + '</div>';
+            }
+
+            // 历史提示
+            if (action === 'created') {
+                html += '<div class="plan-history-hint">新计划已创建</div>';
+            } else if (action === 'progress') {
+                html += '<div class="plan-history-hint">计划更新</div>';
+            }
+
+            body.innerHTML = html;
+        }
+
+        function renderPlanEmpty() {
+            var body = document.getElementById('planBody');
+            var countEl = document.getElementById('planCount');
+            if (body) body.innerHTML = '<div class="plan-empty">等待计划加载…</div>';
+            if (countEl) countEl.textContent = '-';
+        }
+
+        function renderPlanTask(t) {
+            var statusIcon = '';
+            var statusLabel = '';
+            switch (t.status) {
+                case 'completed': statusIcon = '✓'; statusLabel = 'completed'; break;
+                case 'in_progress': statusIcon = '▶'; statusLabel = 'in_progress'; break;
+                case 'failed': statusIcon = '✗'; statusLabel = 'failed'; break;
+                case 'paused': statusIcon = '⏸'; statusLabel = 'paused'; break;
+                default: statusIcon = '○'; statusLabel = 'pending'; break;
+            }
+
+            var html = '<div class="plan-task-item">';
+            html += '<div class="plan-task-status ' + statusLabel + '">' + statusIcon + '</div>';
+            html += '<div class="plan-task-body">';
+            html += '<div class="plan-task-content">' + escapeHtml(t.content || t.task_id || '') + '</div>';
+            html += '<div class="plan-task-meta">';
+
+            // 优先级
+            if (t.priority) {
+                var priLabel = t.priority;
+                if (t.priority === 'high') priLabel = '高';
+                else if (t.priority === 'medium') priLabel = '中';
+                else if (t.priority === 'low') priLabel = '低';
+                html += '<span class="plan-task-tag priority-' + t.priority + '">' + priLabel + '优先</span>';
+            }
+
+            // 依赖
+            if (t.deps && Array.isArray(t.deps) && t.deps.length > 0) {
+                html += '<span class="plan-task-tag dep">依赖: ' + t.deps.join(', ') + '</span>';
+            }
+
+            // 重试
+            if (t.retry_count && t.retry_count > 0) {
+                html += '<span class="plan-task-tag retry">重试 ' + t.retry_count + '/3</span>';
+            }
+
+            html += '</div>';
+
+            // 失败原因
+            if (t.status === 'failed' && t.fail_reason) {
+                html += '<div class="plan-task-fail-reason">' + escapeHtml(t.fail_reason) + '</div>';
+            }
+
+            html += '</div>';
+            html += '</div>';
+            return html;
         }
 
         // ============================================================
@@ -2110,6 +2430,10 @@
                             streamContent = lastText + obj.content;
                             scheduleRender();
                         }
+                    } else if (eventName === 'plan') {
+                        if (obj) {
+                            renderPlan(obj);
+                        }
                     } else if (eventName === 'done') {
                         gotDone = true;
                         if (obj && typeof obj.content === 'string') {
@@ -2339,6 +2663,11 @@
                         const sp = (obj && obj.params) ? obj.params : obj;
                         if (sp && sp.result && sp.tool) {
                             addToolResultCard(sp.tool, sp.result, sp.isError);
+                        }
+                    } else if (eventName === 'plan') {
+                        // 计划事件：更新侧边栏待办面板
+                        if (obj) {
+                            renderPlan(obj);
                         }
                     } else if (eventName === 'retrying') {
                         setState('重试中');

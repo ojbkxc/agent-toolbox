@@ -774,7 +774,7 @@ public class McpServer {
                             
                             log("══════════ 对话轮次 " + currentRound + "/" + maxRounds + " 开始 ══════════");
                             log("  ├─ 输入消息长度: " + (messageToSend == null ? 0 : messageToSend.length()) + " 字符");
-                            log("  ├─ 输入消息前80字符: " + (messageToSend == null ? "(null)" : (messageToSend.length() > 80 ? messageToSend.substring(0, 80) + "..." : messageToSend)));
+                            log("  ├─ 输入消息内容: " + (messageToSend == null ? "(null)" : messageToSend));
                             log("  └─ 已完成轮数: " + (currentRound - 1) + "/" + maxRounds);
 
                             final CountDownLatch roundLatch = new CountDownLatch(1);
@@ -991,7 +991,7 @@ public class McpServer {
                             JSONObject replyJson = extractJsonObject(reply);
                             if (replyJson == null) {
                                 log("  [轮次" + currentRound + "] ⚠ 警告: 无法从回复中提取JSON对象");
-                                log("  [轮次" + currentRound + "]   └─ 回复前200字符: " + truncateForLogging(reply, 200));
+                                log("  [轮次" + currentRound + "]   └─ 回复内容: " + (reply == null ? "(null)" : reply));
                                 finalDone = true;
                                 log("  [轮次" + currentRound + "] ═══ 对话完成 ═══");
                                 break;

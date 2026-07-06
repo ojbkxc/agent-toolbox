@@ -189,8 +189,8 @@ public class TaskManager {
             + "输出格式（仅返回JSON，无多余文字）：\n"
             + "{\n"
             + "  \"tasks\": [\n"
-            + "    {\"task_id\":\"T001\",\"content\":\"步骤描述\",\"priority\":1,\"deps\":[],\"tool_need\":[\"file_read\"],\"checkpoint\":\"验收标准\"},\n"
-            + "    {\"task_id\":\"T002\",\"content\":\"下一步\",\"priority\":2,\"deps\":[\"T001\"],\"tool_need\":[\"file_write\"]}\n"
+            + "    {\"task_id\":\"T001\",\"content\":\"步骤描述\",\"priority\":1,\"deps\":[],\"tool_needs\":[\"file_read\"],\"checkpoint\":\"验收标准\"},\n"
+            + "    {\"task_id\":\"T002\",\"content\":\"下一步\",\"priority\":2,\"deps\":[\"T001\"],\"tool_needs\":[\"file_write\"]}\n"
             + "  ]\n"
             + "}\n\n"
             + "用户目标: " + userMessage;

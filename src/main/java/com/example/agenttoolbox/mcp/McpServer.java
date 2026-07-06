@@ -1131,7 +1131,24 @@ public class McpServer {
                             }
 
                             if (!"tools/call".equals(method)) {
-                                // 既不是工具调用，也没有 result/error：当作文本回复处理
+                                // 既不是工具调用，也没有 result/error
+                                // 先检测是否为纯计划 JSON（LLM 可能直接输出 {"tasks":[...]}）
+                                if (replyJson.has("tasks") && replyJson.optJSONArray("tasks") != null && cachedSession != null) {
+                                    log("[PLAN] 检测到纯计划 JSON（无 JSON-RPC 包装），自动加载");
+                                    cachedSession.taskManager.loadPlan(cachedSession.planState, replyJson);
+                                    cachedSession.planState.confirmed = true;
+                                    log("[PLAN] " + cachedSession.planState.getSummary());
+                                    writePlanEvent(out, cachedSession.planState, "created");
+                                    
+                                    Task firstTask = cachedSession.taskManager.selectNextTask(cachedSession.planState);
+                                    if (firstTask != null) {
+                                        log("[PLAN] 开始执行: [" + firstTask.taskId + "] " + firstTask.content);
+                                        String planContext = cachedSession.planState.toPromptText();
+                                        currentMessage = planContext + "\n\n[系统指令] 请按计划执行第一个任务。任务: " + firstTask.content;
+                                        continue;
+                                    }
+                                }
+                                // 当作文本回复处理
                                 log("[LLM] 未知消息: method=" + method + "，当作文本回复处理");
                                 finalDone = true;
                                 break;

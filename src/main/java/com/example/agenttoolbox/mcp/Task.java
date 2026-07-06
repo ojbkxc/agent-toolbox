@@ -124,6 +124,8 @@ public class Task {
                 JSONArray arr = new JSONArray();
                 for (String t : toolNeeds) arr.put(t);
                 json.put("tool_need", arr);
+            // 同时输出 tool_needs 别名，兼容不同客户端
+            json.put("tool_needs", arr);
             }
             if (createTime != null) json.put("create_time", createTime);
             if (updateTime != null) json.put("update_time", updateTime);
@@ -146,7 +148,8 @@ public class Task {
         if (deps != null) for (int i = 0; i < deps.length(); i++) t.deps.add(deps.optString(i));
         t.deadline = json.optString("deadline", null);
         t.estimatedCost = json.optString("estimated_cost", null);
-        JSONArray tools = json.optJSONArray("tool_need");
+        JSONArray tools = json.optJSONArray("tool_needs");
+        if (tools == null) tools = json.optJSONArray("tool_need");
         if (tools != null) for (int i = 0; i < tools.length(); i++) t.toolNeeds.add(tools.optString(i));
         t.createTime = json.optString("create_time", null);
         t.updateTime = json.optString("update_time", null);

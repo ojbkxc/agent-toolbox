@@ -347,9 +347,15 @@ public class DeepSeekChatBridge {
             "\n" +
             "    // 每 10 次轮询（约 5 秒）输出一次诊断状态\n" +
             "    if (pollCount % 10 === 0) {\n" +
-            "      var diagAiCount = document.querySelectorAll('.ds-assistant-message-main-content').length;\n" +
+            "      var diagAiMsgs = document.querySelectorAll('.ds-assistant-message-main-content');\n" +
             "      var diagReady = isSendButtonReady();\n" +
-            "      Android.log('[JS] 诊断 poll#' + pollCount + ' ready=' + diagReady + ' aiCount=' + diagAiCount + '/' + initialAiCount + ' stable=' + stableCount + ' lastLen=' + lastTextLen);\n" +
+            "      // 输出每个 AI 元素的文本预览，定位新回复是否出现\n" +
+            "      var previews = [];\n" +
+            "      for (var dp = 0; dp < diagAiMsgs.length; dp++) {\n" +
+            "        var dt = (diagAiMsgs[dp].innerText || diagAiMsgs[dp].textContent || '').trim();\n" +
+            "        previews.push('[' + dp + ']len=' + dt.length + ':' + dt.substring(0, 30).replace(/\\n/g, ' '));\n" +
+            "      }\n" +
+            "      Android.log('[JS] 诊断 poll#' + pollCount + ' ready=' + diagReady + ' aiCount=' + diagAiMsgs.length + '/' + initialAiCount + ' stable=' + stableCount + ' lastLen=' + lastTextLen + ' | ' + previews.join(' || '));\n" +
             "    }\n" +
             "\n" +
             "    // 快速跳过：若检测到停止按钮（LLM 生成中），本轮直接返回\n" +

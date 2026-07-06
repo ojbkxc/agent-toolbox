@@ -256,9 +256,9 @@ public class DeepSeekChatBridge {
             "  var pollCount = 0;\n" +
             "  var lastTextLen = 0;\n" +
             "  var stableCount = 0;\n" +
-            "  // 记录发送前已有的消息数（baseline）\n" +
-            "  var initialMsgCount = document.querySelectorAll('.ds-message').length;\n" +
-            "  Android.log('[JS] 初始消息数=' + initialMsgCount);\n" +
+            "  // 记录发送前已有的 AI 回复数（baseline）\n" +
+            "  var initialAiCount = document.querySelectorAll('.ds-assistant-message-main-content').length;\n" +
+            "  Android.log('[JS] 初始AI回复数=' + initialAiCount);\n" +
             "\n" +
             "  function isSendButtonReady() {\n" +
             "    var paths = document.querySelectorAll('svg path');\n" +
@@ -327,22 +327,22 @@ public class DeepSeekChatBridge {
             "      return;\n" +
             "    }\n" +
             "\n" +
-            "    // 获取所有 .ds-message，检查是否有新消息\n" +
-            "    var allMsgs = document.querySelectorAll('.ds-message');\n" +
-            "    if (allMsgs.length <= initialMsgCount) return;\n" +
+            "    // 检查是否有新的 AI 回复\n" +
+            "    var aiMsgs = document.querySelectorAll('.ds-assistant-message-main-content');\n" +
+            "    if (aiMsgs.length <= initialAiCount) return;\n" +
             "\n" +
-            "    // 取最后一条消息\n" +
-            "    var lastMsg = allMsgs[allMsgs.length - 1];\n" +
-            "\n" +
-            "    // 检查是否是 AI 回复（包含 .ds-assistant-message-main-content）\n" +
-            "    var aiContent = lastMsg.querySelector('.ds-assistant-message-main-content');\n" +
-            "    if (!aiContent) {\n" +
-            "      // 还没生成 AI 回复，继续等\n" +
-            "      return;\n" +
-            "    }\n" +
+            "    // 取最新的 AI 回复元素\n" +
+            "    var lastAi = aiMsgs[aiMsgs.length - 1];\n" +
             "\n" +
             "    // 提取文本（优先从 span）\n" +
-            "    var rawText = extractReply(lastMsg);\n" +
+            "    var span = lastAi.querySelector('span');\n" +
+            "    var rawText = '';\n" +
+            "    if (span) {\n" +
+            "      rawText = (span.innerText || span.textContent || '').trim();\n" +
+            "    }\n" +
+            "    if (!rawText) {\n" +
+            "      rawText = (lastAi.innerText || lastAi.textContent || '').trim();\n" +
+            "    }\n" +
             "    if (!rawText || rawText.length < 2) return;\n" +
             "\n" +
             "    // 稳定性检查：文本停止变化 3 次（1.5 秒）\n" +
@@ -387,7 +387,7 @@ public class DeepSeekChatBridge {
             "  }\n" +
             "\n" +
             "  window[__prefix + 'poll'] = setInterval(pollOnce, 500);\n" +
-            "  Android.log('[JS] 轮询启动, 每 500ms, 初始消息数=' + initialMsgCount);\n" +
+            "  Android.log('[JS] 轮询启动, 每 500ms, 初始AI回复数=' + initialAiCount);\n" +
             "  return 'observer_started_' + __rid;\n" +
             "})()";// ========== Step 2: 填写消息并发送 ==========
         final String sendScript =

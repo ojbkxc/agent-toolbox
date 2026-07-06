@@ -581,11 +581,9 @@ public class DeepSeekChatBridge {
         CountDownLatch l = latchById.get(requestId);
         if (l != null) l.countDown();
         
-        // P2 修复：增加完整内容日志，支持 4096 字节缓冲
-        String logMsg = formatLongMessageForLog(reply, 4096);
+        // 所有 LLM 回复必须完整记录，不截断
         AppLogger.d("DeepSeekChatBridge",
-            "[" + requestId + "] 捕获回复 (长度=" + reply.length() + ")" + 
-            "\n内容: " + logMsg);
+            "[" + requestId + "] LLM回复 (长度=" + reply.length() + ")\n" + reply);
     }
 
     /**
@@ -651,7 +649,8 @@ public class DeepSeekChatBridge {
                             }
                         }
                         AppLogger.d("DeepSeekChatBridge",
-                            "[" + requestId + "] 备用 DOM 提取结果长度=" + (extracted == null ? 0 : extracted.length()));
+                            "[" + requestId + "] 备用 DOM 提取结果长度=" + (extracted == null ? 0 : extracted.length())
+                            + "\n内容: " + (extracted == null ? "(null)" : extracted));
                         if (ref != null) ref.set(extracted);
                         if (l != null) l.countDown();
                     }

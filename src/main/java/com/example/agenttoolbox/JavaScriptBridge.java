@@ -158,7 +158,7 @@ public class JavaScriptBridge {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                android.util.Log.d("JSBridge", message);
+                AppLogger.d("JSBridge", message);
             }
         });
     }

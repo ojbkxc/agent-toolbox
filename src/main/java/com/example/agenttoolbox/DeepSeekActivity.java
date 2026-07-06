@@ -944,7 +944,9 @@ public class DeepSeekActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (webView != null) webView.onPause();
+        // 不调用 webView.onPause()，保持 JavaScript 定时器运行
+        // 否则 setInterval 轮询会被冻结，无法捕获 LLM 回复
+        // 用户返回 MainActivity 时 MCP 服务仍需后台轮询
     }
 
     @Override

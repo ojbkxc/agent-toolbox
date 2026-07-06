@@ -832,7 +832,7 @@ public class McpServer {
                                     messageToSend = cachedSession.systemPrompt;
                                 }
                                 log("[INIT] 系统提示词: " + messageToSend.length() + " 字符");
-                            } else if (round == 1) {
+                            } else if (round == 1 && cachedSession == null) {
                                 // 兜底：无缓存时生成 system prompt
                                 String systemPrompt = ToolManager.getInstance().getSystemPrompt();
                                 try {

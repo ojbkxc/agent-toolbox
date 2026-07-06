@@ -256,25 +256,9 @@ public class DeepSeekChatBridge {
             "  var pollCount = 0;\n" +
             "  var lastTextLen = 0;\n" +
             "  var stableCount = 0;\n" +
-            "  var initialMsgCount = getAssistantMessages().length;\n" +
-            "\n" +
-            "  // ===== Helper Functions =====\n" +
-            "  function getAssistantMessages() {\n" +
-            "    var selectors = [\n" +
-            "      '.ds-markdown.ds-assistant-message-main-content',\n" +
-            "      '[class*=\"ds-assistant-message-main-content\"]',\n" +
-            "      '[class*=\"assistant-message-main\"]',\n" +
-            "      '.ds-markdown--block',\n" +
-            "      '[class*=\"ds-markdown\"]',\n" +
-            "      '[class*=\"assistant-message\"]',\n" +
-            "      '[class*=\"markdown\"]'\n" +
-            "    ];\n" +
-            "    for (var i = 0; i < selectors.length; i++) {\n" +
-            "      var list = document.querySelectorAll(selectors[i]);\n" +
-            "      if (list && list.length > 0) return list;\n" +
-            "    }\n" +
-            "    return [];\n" +
-            "  }\n" +
+            "  // 记录发送前已有的消息数（baseline）\n" +
+            "  var initialMsgCount = document.querySelectorAll('.ds-message').length;\n" +
+            "  Android.log('[JS] 初始消息数=' + initialMsgCount);\n" +
             "\n" +
             "  function isSendButtonReady() {\n" +
             "    var paths = document.querySelectorAll('svg path');\n" +
@@ -294,33 +278,74 @@ public class DeepSeekChatBridge {
             "    Android.onDeepSeekReply(__rid, reply || '');\n" +
             "  }\n" +
             "\n" +
-            "  // ===== Core Polling (per guide) =====\n" +
+            "  // 从 AI 回复元素中提取 JSON-RPC 内容\n" +
+            "  function extractReply(el) {\n" +
+            "    // 优先从 span 中提取（文档：AI 回复在 .ds-assistant-message-main-content span）\n" +
+            "    var span = el.querySelector('.ds-assistant-message-main-content span');\n" +
+            "    var rawText = '';\n" +
+            "    if (span) {\n" +
+            "      rawText = (span.innerText || span.textContent || '').trim();\n" +
+            "    }\n" +
+            "    if (!rawText) {\n" +
+            "      rawText = (el.innerText || el.textContent || '').trim();\n" +
+            "    }\n" +
+            "    return rawText;\n" +
+            "  }\n" +
+            "\n" +
+            "  // 解析 JSON-RPC 并提取内容\n" +
+            "  function parseJsonRpc(rawText) {\n" +
+            "    if (!rawText) return null;\n" +
+            "    var firstBrace = rawText.indexOf('{');\n" +
+            "    if (firstBrace === -1) return null;\n" +
+            "    var jsonStr = rawText.substring(firstBrace);\n" +
+            "    // 匹配完整 JSON 对象\n" +
+            "    var depth = 0; var endIdx = -1;\n" +
+            "    for (var ci = 0; ci < jsonStr.length; ci++) {\n" +
+            "      if (jsonStr[ci] === '{') depth++;\n" +
+            "      else if (jsonStr[ci] === '}') { depth--; if (depth === 0) { endIdx = ci; break; } }\n" +
+            "    }\n" +
+            "    if (endIdx > 0) jsonStr = jsonStr.substring(0, endIdx + 1);\n" +
+            "    try { return JSON.parse(jsonStr); } catch(e) {}\n" +
+            "    return null;\n" +
+            "  }\n" +
+            "\n" +
             "  function pollOnce() {\n" +
             "    if (finished) return;\n" +
             "    pollCount++;\n" +
             "\n" +
-            "    // Timeout: 5 min\n" +
+            "    // 超时 5 分钟\n" +
             "    if (pollCount > 600) {\n" +
             "      Android.log('[JS] 超时: pollCount=' + pollCount);\n" +
             "      finish('');\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
-            "    // Step 3: Wait for send button ready (M8.3125 = arrow = LLM stopped)\n" +
+            "    // 等待发送按钮就绪（LLM 停止生成）\n" +
             "    if (!isSendButtonReady()) {\n" +
             "      stableCount = 0;\n" +
             "      lastTextLen = 0;\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
-            "    // Step 4: Collect last AI message text\n" +
-            "    var list = getAssistantMessages();\n" +
-            "    if (list.length <= initialMsgCount) return;\n" +
-            "    var lastEl = list[list.length - 1];\n" +
-            "    var rawText = (lastEl.innerText || lastEl.textContent || '').trim();\n" +
+            "    // 获取所有 .ds-message，检查是否有新消息\n" +
+            "    var allMsgs = document.querySelectorAll('.ds-message');\n" +
+            "    if (allMsgs.length <= initialMsgCount) return;\n" +
+            "\n" +
+            "    // 取最后一条消息\n" +
+            "    var lastMsg = allMsgs[allMsgs.length - 1];\n" +
+            "\n" +
+            "    // 检查是否是 AI 回复（包含 .ds-assistant-message-main-content）\n" +
+            "    var aiContent = lastMsg.querySelector('.ds-assistant-message-main-content');\n" +
+            "    if (!aiContent) {\n" +
+            "      // 还没生成 AI 回复，继续等\n" +
+            "      return;\n" +
+            "    }\n" +
+            "\n" +
+            "    // 提取文本（优先从 span）\n" +
+            "    var rawText = extractReply(lastMsg);\n" +
             "    if (!rawText || rawText.length < 2) return;\n" +
             "\n" +
-            "    // Stability check: text must stop changing for 3 polls (1.5s)\n" +
+            "    // 稳定性检查：文本停止变化 3 次（1.5 秒）\n" +
             "    if (rawText.length === lastTextLen) {\n" +
             "      stableCount++;\n" +
             "    } else {\n" +
@@ -329,63 +354,40 @@ public class DeepSeekChatBridge {
             "    }\n" +
             "    if (stableCount < 3) return;\n" +
             "\n" +
-            "    // Step 5: Extract JSON - 尝试多种方式\n" +
-            "    var jsonStr = '';\n" +
-            "    var parsed = null;\n" +
-            "\n" +
-            "    // 方式1: 从 rawText 提取第一个完整 JSON 对象\n" +
-            "    var firstBrace = rawText.indexOf('{');\n" +
-            "    if (firstBrace !== -1) {\n" +
-            "      jsonStr = rawText.substring(firstBrace);\n" +
-            "      // 尝试找到匹配的闭合大括号\n" +
-            "      var depth = 0; var endIdx = -1;\n" +
-            "      for (var ci = 0; ci < jsonStr.length; ci++) {\n" +
-            "        if (jsonStr[ci] === '{') depth++;\n" +
-            "        else if (jsonStr[ci] === '}') { depth--; if (depth === 0) { endIdx = ci; break; } }\n" +
-            "      }\n" +
-            "      if (endIdx > 0) jsonStr = jsonStr.substring(0, endIdx + 1);\n" +
-            "      try { parsed = JSON.parse(jsonStr); } catch(e) {}\n" +
-            "    }\n" +
-            "\n" +
-            "    // 方式2: 如果失败，尝试用正则提取 jsonrpc 格式\n" +
+            "    // 解析 JSON\n" +
+            "    var parsed = parseJsonRpc(rawText);\n" +
             "    if (!parsed) {\n" +
-            "      var match = rawText.match(/\\{[\\s]*\"jsonrpc\"[\\s\\S]*?\\}/);\n" +
-            "      if (match) {\n" +
-            "        jsonStr = match[0];\n" +
-            "        try { parsed = JSON.parse(jsonStr); } catch(e) {}\n" +
-            "      }\n" +
-            "    }\n" +
-            "\n" +
-            "    // 方式3: 修复常见转义问题\n" +
-            "    if (!parsed && jsonStr) {\n" +
-            "      var fixed = jsonStr.replace(/\\\\'/g, \"'\");\n" +
-            "      try { parsed = JSON.parse(fixed); } catch(e) {}\n" +
-            "    }\n" +
-            "\n" +
-            "    if (!parsed) {\n" +
-            "      Android.log('[JS] JSON 解析失败, rawText长度=' + rawText.length + '\n' + rawText);\n" +
+            "      Android.log('[JS] JSON 解析失败, rawText=' + rawText);\n" +
             "      finish(rawText);\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
-            "    // Step 7: Determine type and finish\n" +
-            "    var isToolCall = parsed.method && parsed.method === 'tools/call';\n" +
-            "    Android.log('[JS] JSON 解析成功: method=' + (parsed.method || 'none') + ', 长度=' + jsonStr.length);\n" +
+            "    var method = parsed.method || '';\n" +
+            "    Android.log('[JS] JSON 解析成功: method=' + method + ', id=' + (parsed.id || 'none'));\n" +
             "\n" +
-            "    // 如果是 JSON-RPC 响应格式，提取 result.content\n" +
-            "    if (parsed.jsonrpc && parsed.result) {\n" +
-            "      var result = parsed.result;\n" +
-            "      var content = result.content || result.text || '';\n" +
-            "      Android.log('[JS] JSON-RPC 响应: type=' + (result.type || 'unknown') + ', content长度=' + content.length);\n" +
-            "      finish(content || jsonStr);\n" +
+            "    // 工具调用: {method: 'tools/call', params: {name, arguments}}\n" +
+            "    if (method === 'tools/call') {\n" +
+            "      Android.log('[JS] 检测到工具调用: ' + JSON.stringify(parsed));\n" +
+            "      finish(JSON.stringify(parsed));\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
-            "    finish(jsonStr);\n" +
+            "    // 文本回复: {result: {type: 'reply', content: '...'}}\n" +
+            "    if (parsed.jsonrpc && parsed.result) {\n" +
+            "      var result = parsed.result;\n" +
+            "      var content = result.content || result.text || '';\n" +
+            "      Android.log('[JS] 文本回复: type=' + (result.type || 'unknown') + ', content=' + content);\n" +
+            "      finish(content || JSON.stringify(parsed));\n" +
+            "      return;\n" +
+            "    }\n" +
+            "\n" +
+            "    // 其他 JSON 格式，原样返回\n" +
+            "    Android.log('[JS] 未知 JSON 格式: ' + JSON.stringify(parsed));\n" +
+            "    finish(JSON.stringify(parsed));\n" +
             "  }\n" +
             "\n" +
             "  window[__prefix + 'poll'] = setInterval(pollOnce, 500);\n" +
-            "  Android.log('[JS] 轮询启动, 每 500ms');\n" +
+            "  Android.log('[JS] 轮询启动, 每 500ms, 初始消息数=' + initialMsgCount);\n" +
             "  return 'observer_started_' + __rid;\n" +
             "})()";// ========== Step 2: 填写消息并发送 ==========
         final String sendScript =

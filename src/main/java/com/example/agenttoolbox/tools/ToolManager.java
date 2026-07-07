@@ -52,6 +52,9 @@ public class ToolManager {
         registerTool(new MemoryFreezeTool());
         registerTool(new AobSearchTool());
         registerTool(new LuaExecuteTool(context));
+        
+        // 注册 APK MCP 工具（从 MT 管理器动态拉取）
+        mergeApkTools();
     }
     
     /**
@@ -59,6 +62,56 @@ public class ToolManager {
      */
     public void registerTool(Tool tool) {
         tools.put(tool.getName(), tool);
+    }
+    
+    /**
+     * 从 MT 管理器 APK MCP 动态拉取工具并注册
+     */
+    public void mergeApkTools() {
+        ApkMcpClient client = ApkMcpClient.getInstance();
+        if (!client.isEnabled()) return;
+        
+        if (!client.connect()) {
+            android.util.Log.w("ToolManager", "APK MCP 连接失败，跳过工具合并");
+            return;
+        }
+        
+        JSONArray remoteTools = client.getRemoteTools();
+        if (remoteTools == null || remoteTools.length() == 0) return;
+        
+        int count = 0;
+        for (int i = 0; i < remoteTools.length(); i++) {
+            try {
+                JSONObject toolDef = remoteTools.getJSONObject(i);
+                String name = toolDef.optString("name", "");
+                if (!name.startsWith("mt_apk_")) continue;
+                
+                String desc = toolDef.optString("description", "");
+                JSONObject inputSchema = toolDef.optJSONObject("inputSchema");
+                if (inputSchema == null) inputSchema = new JSONObject();
+                
+                ApkMcpToolWrapper wrapper = new ApkMcpToolWrapper(name, desc, inputSchema);
+                tools.put(name, wrapper);
+                count++;
+            } catch (JSONException e) {
+                // skip malformed tool
+            }
+        }
+        android.util.Log.i("ToolManager", "已合并 " + count + " 个 APK MCP 工具");
+    }
+    
+    /**
+     * 重新拉取 APK MCP 工具（用于 MT 服务启动后手动刷新）
+     */
+    public void reloadApkTools() {
+        // 移除旧的 APK 工具
+        java.util.Iterator<String> it = tools.keySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().startsWith("mt_apk_")) it.remove();
+        }
+        // 重新连接并合并
+        ApkMcpClient.getInstance().connect();
+        mergeApkTools();
     }
     
     /**
@@ -522,6 +575,11 @@ public class ToolManager {
         JSONObject contentItem = new JSONObject();
         
         try {
+            // APK MCP 工具：转发到 MT 管理器
+            if (name.startsWith("mt_apk_")) {
+                return ApkMcpClient.getInstance().callTool(name, arguments);
+            }
+            
             Tool tool = tools.get(name);
             if (tool == null) {
                 result.put("isError", true);
@@ -547,12 +605,48 @@ public class ToolManager {
                 content.put(contentItem);
                 result.put("content", content);
             } catch (JSONException ex) {
-                // 正常情况下不会发生
                 ex.printStackTrace();
             }
         }
         
         return result;
+    }
+    
+    /**
+     * APK MCP 工具包装器 — 将 MT 管理器的工具包装为 Tool 接口
+     */
+    private static class ApkMcpToolWrapper implements Tool {
+        private final String name;
+        private final String description;
+        private final JSONObject inputSchema;
+        
+        ApkMcpToolWrapper(String name, String description, JSONObject inputSchema) {
+            this.name = name;
+            this.description = description;
+            this.inputSchema = inputSchema;
+        }
+        
+        @Override
+        public String getName() {
+            return name;
+        }
+        
+        @Override
+        public String getDescription() {
+            return description;
+        }
+        
+        @Override
+        public JSONObject getInputSchema() {
+            return inputSchema;
+        }
+        
+        @Override
+        public String execute(JSONObject arguments) {
+            // 不应该直接调用 wrapper，应该通过 callTool 路由
+            JSONObject result = ApkMcpClient.getInstance().callTool(name, arguments);
+            return result != null ? result.toString() : "APK 工具调用失败";
+        }
     }
     
 }

@@ -769,6 +769,8 @@ public class McpServer {
                         int round = 0;
                         boolean finalDone = false;
                         int toolCallCount = 0; // 防止工具调用循环
+                        // 计划完成总结是否已推送给前端（避免重复推送）
+                        boolean planCompletePushed = false;
 
                         // 新会话：创建缓存
                         if (isNewSession) {
@@ -1287,6 +1289,13 @@ public class McpServer {
                                 finalDone = true;
                                 break;
                             }
+                            // 保护：计划已完成并已回传工具结果后，LLM 若再次发起工具调用，
+                            // 视为收尾失败，强制结束，避免无限循环
+                            if (planCompletePushed) {
+                                log("[LOOP] 计划完成后 LLM 再次工具调用，强制结束");
+                                finalDone = true;
+                                break;
+                            }
                             long toolStartTime = System.currentTimeMillis();
                             String toolResult = null;
                             boolean toolIsError = false;
@@ -1371,28 +1380,34 @@ public class McpServer {
                                 // 检查是否全部完成
                                 if (cachedSession.planState.allCompleted()) {
                                     log("[PLAN] 所有任务已完成！");
-                                    String summary = cachedSession.taskManager.generateSummary(cachedSession.planState);
-                                    finalDone = true;
-                                    // 附加总结到最终消息（仅供调试/日志参考；finalDone 后主循环不会再有下一轮）
-                                    currentMessage = currentMessage + "\n\n" + summary;
-
-                                    // 关键修复：finalDone=true 后主循环不会进入下一轮 LLM 对话，
-                                    // 因此必须主动把"完成总结"推送给前端。否则前端只会停在上一轮
-                                    // （文本回复或工具调用状态），永远看不到最终总结。
-                                    try {
-                                        writePlanEvent(out, cachedSession.planState, "complete");
-                                        JSONObject doneJ = new JSONObject();
-                                        doneJ.put("content", summary);
-                                        doneJ.put("round", currentRound);
-                                        doneJ.put("isToolCall", false);
-                                        doneJ.put("planComplete", true);
-                                        doneJ.put("canContinue", false);
-                                        writeEventChunk(out, "done", doneJ.toString());
-                                        flushWriteHandler();
-                                        log("[PLAN] 完成总结已推送至前端");
-                                    } catch (Exception e) {
-                                        log("[PLAN] 推送完成总结失败: " + e.getMessage());
+                                    // 关键修复：计划完成时不再立即结束对话。
+                                    // 此前直接 finalDone=true 会让主循环退出，导致最后一轮的工具结果
+                                    // (currentMessage=toolResultMsg) 从未发送给 LLM，DeepSeek 网页端
+                                    // 看不到工具回复，也无法生成收尾文本。
+                                    // 现在改为：保留 currentMessage 作为工具结果让循环继续一轮发给 LLM，
+                                    // 同时把"完成总结"推送给前端测试页，并标记 planCompletePushed
+                                    // 防止下一轮重复推送。LLM 收到工具结果后会生成文本收尾回复，
+                                    // 进入文本回复分支自然结束。
+                                    if (!planCompletePushed) {
+                                        planCompletePushed = true;
+                                        String summary = cachedSession.taskManager.generateSummary(cachedSession.planState);
+                                        try {
+                                            writePlanEvent(out, cachedSession.planState, "complete");
+                                            JSONObject doneJ = new JSONObject();
+                                            doneJ.put("content", summary);
+                                            doneJ.put("round", currentRound);
+                                            doneJ.put("isToolCall", false);
+                                            doneJ.put("planComplete", true);
+                                            doneJ.put("canContinue", false);
+                                            writeEventChunk(out, "done", doneJ.toString());
+                                            flushWriteHandler();
+                                            log("[PLAN] 完成总结已推送至前端");
+                                        } catch (Exception e) {
+                                            log("[PLAN] 推送完成总结失败: " + e.getMessage());
+                                        }
                                     }
+                                    // 注意：不设置 finalDone，让循环继续一轮把工具结果发回给 LLM
+                                    log("[PLAN] 计划已完成，工具结果将回传给 LLM 以生成收尾回复");
                                 }
                             }
 

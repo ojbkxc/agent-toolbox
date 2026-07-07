@@ -81,32 +81,46 @@ public class ApkMcpClient {
             }
             Log.i(TAG, "initialize 成功: " + initResp.toString().substring(0, Math.min(200, initResp.toString().length())));
 
-            // 2. initialized notification (no response needed)
-            sendMcpNotification("notifications/initialized", new JSONObject());
-
-            // 3. tools/list
-            JSONObject toolsResp = sendMcpRequest("tools/list", new JSONObject());
-            if (toolsResp == null) {
-                Log.w(TAG, "tools/list 失败");
-                return false;
-            }
-
-            JSONArray tools = toolsResp.optJSONArray("tools");
-            if (tools == null) {
-                // 可能在 result 里面
-                JSONObject result = toolsResp.optJSONObject("result");
+            // 2. 从 initialize 响应中提取工具（MT 管理器工具名自带 mt_apk_ 前缀）
+            JSONArray tools = new JSONArray();
+            try {
+                JSONObject result = initResp.optJSONObject("result");
                 if (result != null) {
-                    tools = result.optJSONArray("tools");
+                    JSONObject caps = result.optJSONObject("capabilities");
+                    if (caps != null) {
+                        JSONObject capsTools = caps.optJSONObject("tools");
+                        if (capsTools != null) {
+                            JSONObject available = capsTools.optJSONObject("availableTools");
+                            if (available != null) {
+                                java.util.Iterator<String> keys = available.keys();
+                                while (keys.hasNext()) {
+                                    String name = keys.next();
+                                    JSONObject info = available.optJSONObject(name);
+                                    JSONObject tool = new JSONObject();
+                                    tool.put("name", name);  // MT 工具名已自带 mt_apk_ 前缀
+                                    tool.put("description", name);
+                                    tool.put("inputSchema", new JSONObject());
+                                    tools.put(tool);
+                                }
+                            }
+                        }
+                    }
                 }
+            } catch (Exception e) {
+                Log.w(TAG, "从 initialize 提取工具失败: " + e.getMessage());
             }
-            if (tools == null) {
-                Log.w(TAG, "tools/list 返回的工具列表为空");
+
+            if (tools.length() == 0) {
+                Log.w(TAG, "initialize 中未找到 APK 工具");
                 return false;
             }
 
             remoteTools = tools;
             connected = true;
             Log.i(TAG, "连接成功，获取到 " + tools.length() + " 个 APK 工具");
+
+            // 3. initialized notification
+            sendMcpNotification("notifications/initialized", new JSONObject());
             return true;
 
         } catch (Exception e) {
@@ -133,7 +147,7 @@ public class ApkMcpClient {
 
         try {
             JSONObject params = new JSONObject();
-            params.put("name", toolName);
+            params.put("name", toolName);  // 工具名已自带 mt_apk_ 前缀，直接传给 MT
             params.put("arguments", arguments != null ? arguments : new JSONObject());
 
             JSONObject resp = sendMcpRequest("tools/call", params);

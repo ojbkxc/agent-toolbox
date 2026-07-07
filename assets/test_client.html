@@ -921,6 +921,59 @@
             flex-direction: column;
             gap: 8px;
         }
+
+        /* ===== 聊天区内嵌计划面板 ===== */
+        .chat-plan-panel {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .chat-plan-header {
+            padding: 8px 14px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            font-size: 13px;
+            color: #1e293b;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .chat-plan-header:hover {
+            background: #f1f5f9;
+        }
+        .chat-plan-header .count {
+            background: #eef2f6;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #475569;
+        }
+        .chat-plan-body {
+            padding: 8px 12px;
+            overflow-y: auto;
+            max-height: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #fafcff;
+        }
+        .chat-plan-body.collapsed {
+            display: none;
+        }
+        #chatPlanToggle {
+            display: inline-block;
+            font-size: 10px;
+            transition: transform 0.2s;
+            color: #64748b;
+        }
+        #chatPlanToggle.expanded {
+            transform: rotate(90deg);
+        }
+
         .plan-empty {
             text-align: center;
             color: #94a3b8;
@@ -1122,17 +1175,6 @@
                     </div>
                 </div>
 
-                <!-- 待办计划 -->
-                <div class="plan-panel" id="planPanel">
-                    <div class="panel-header">
-                        待办计划
-                        <span class="count" id="planCount">-</span>
-                    </div>
-                    <div class="panel-body" id="planBody">
-                        <div class="plan-empty">等待计划加载…</div>
-                    </div>
-                </div>
-
                 <!-- 快捷命令 -->
                 <div class="panel">
                     <div class="panel-header">快捷命令</div>
@@ -1163,29 +1205,30 @@
                     </span>
                     <span id="sessionStatus" style="font-weight:400; font-size:13px; color:#6b7a8f;">就绪</span>
                 </div>
+                <!-- 内嵌待办计划（可折叠） -->
+                <div class="chat-plan-panel" id="chatPlanPanel" style="display:none;">
+                    <div class="chat-plan-header" onclick="toggleChatPlan()">
+                        <span style="display:flex; align-items:center; gap:6px;">
+                            <span id="chatPlanToggle">▶</span>
+                            待办计划
+                        </span>
+                        <span class="count" id="planCount">-</span>
+                    </div>
+                    <div class="chat-plan-body" id="planBody">
+                        <div class="plan-empty">等待计划加载…</div>
+                    </div>
+                </div>
+
                 <div class="panel-body" id="chatMessages">
                     <div class="message system">
                         <div class="message-avatar">i</div>
                         <div class="message-content">
                             <div class="message-label">系统</div>
                             <div class="message-bubble" style="line-height:1.7;">
-                                <strong>👋 欢迎使用 MCP 工具箱</strong><br><br>
-                                连接服务后，你可以通过自然语言或命令调用以下 <strong>10 个工具</strong>：<br><br>
-                                <strong>📁 文件类</strong><br>
-                                <code>file_list</code> 列目录 &nbsp;|&nbsp;
-                                <code>file_read</code> 读文件（支持行号范围）<br>
-                                <code>file_write</code> 写文件（6种模式：写入/插入/替换/删除/追加行/前置行）<br><br>
-                                <strong>🌐 网络类</strong><br>
-                                <code>http_request</code> HTTP 请求（GET/POST/PUT/DELETE）&nbsp;|&nbsp;
-                                <code>web</code> 网页抓取（标题/正文/HTML/JSON）<br><br>
-                                <strong>⚙️ 执行类</strong><br>
-                                <code>shell</code> Shell 命令 &nbsp;|&nbsp;
-                                <code>cmd</code> Android 系统服务命令<br>
-                                <code>python</code> Python 脚本 &nbsp;|&nbsp;
-                                <code>sh</code> Shell 脚本文件<br><br>
-                                <strong>🔢 计算类</strong><br>
-                                <code>math_calculator</code> 数学表达式计算<br><br>
-                                💡 输入 <code>/help</code> 查看完整命令用法，点击侧边栏工具可快速填入。
+                                <strong>MCP 工具箱</strong><br><br>
+                                连接服务后，你可以通过自然语言或命令调用工具。<br>
+                                点击侧边栏工具可快速填入调用指令。<br><br>
+                                💡 输入 <code>/help</code> 查看完整命令用法。
                             </div>
                         </div>
                     </div>
@@ -1412,13 +1455,27 @@
 
         function clearChat() {
             chatMessages.innerHTML =
-                `<div class="message system"><div class="message-avatar">i</div><div class="message-content"><div class="message-label">系统</div><div class="message-bubble" style="line-height:1.7;"><strong>👋 欢迎使用 MCP 工具箱</strong><br><br>连接服务后，你可以通过自然语言或命令调用以下 <strong>10 个工具</strong>：<br><br><strong>📁 文件类</strong><br><code>file_list</code> 列目录 &nbsp;|&nbsp;<code>file_read</code> 读文件（支持行号范围）<br><code>file_write</code> 写文件（6种模式：写入/插入/替换/删除/追加行/前置行）<br><br><strong>🌐 网络类</strong><br><code>http_request</code> HTTP 请求（GET/POST/PUT/DELETE）&nbsp;|&nbsp;<code>web</code> 网页抓取（标题/正文/HTML/JSON）<br><br><strong>⚙️ 执行类</strong><br><code>shell</code> Shell 命令 &nbsp;|&nbsp;<code>cmd</code> Android 系统服务命令<br><code>python</code> Python 脚本 &nbsp;|&nbsp;<code>sh</code> Shell 脚本文件<br><br><strong>🔢 计算类</strong><br><code>math_calculator</code> 数学表达式计算<br><br>💡 输入 <code>/help</code> 查看完整命令用法，点击侧边栏工具可快速填入。</div></div></div>`;
+                `<div class="message system"><div class="message-avatar">i</div><div class="message-content"><div class="message-label">系统</div><div class="message-bubble" style="line-height:1.7;"><strong>MCP 工具箱</strong><br><br>连接服务后，你可以通过自然语言或命令调用工具。<br>点击侧边栏工具可快速填入调用指令。<br><br>💡 输入 <code>/help</code> 查看完整命令用法。</div></div></div>`;
         }
 
         // ============================================================
         //  Plan 面板渲染
         // ============================================================
         let planState = null;
+        let planExpanded = true;
+
+        function toggleChatPlan() {
+            planExpanded = !planExpanded;
+            var body = document.getElementById('planBody');
+            var toggle = document.getElementById('chatPlanToggle');
+            if (planExpanded) {
+                body.classList.remove('collapsed');
+                toggle.classList.add('expanded');
+            } else {
+                body.classList.add('collapsed');
+                toggle.classList.remove('expanded');
+            }
+        }
 
         function renderPlan(planData) {
             if (!planData) {
@@ -1427,6 +1484,10 @@
                 return;
             }
             planState = planData;
+
+            // 显示计划面板
+            var chatPlanPanel = document.getElementById('chatPlanPanel');
+            if (chatPlanPanel) chatPlanPanel.style.display = 'block';
 
             const body = document.getElementById('planBody');
             const countEl = document.getElementById('planCount');
@@ -1486,6 +1547,9 @@
             var countEl = document.getElementById('planCount');
             if (body) body.innerHTML = '<div class="plan-empty">等待计划加载…</div>';
             if (countEl) countEl.textContent = '-';
+            // 隐藏计划面板
+            var chatPlanPanel = document.getElementById('chatPlanPanel');
+            if (chatPlanPanel) chatPlanPanel.style.display = 'none';
         }
 
         function renderPlanTask(t) {
@@ -1545,14 +1609,49 @@
                     '<li class="text-center text-muted" style="padding:12px 0; font-size:13px;">暂无工具</li>';
                 return;
             }
-            tools.forEach(t => {
-                const li = document.createElement('li');
-                li.className = 'tool-item';
-                li.onclick = () => { chatInput.value = `/call ${t.name} {}`;
-                    chatInput.focus(); };
-                li.innerHTML = `<div class="tool-name">${t.name}</div><div class="tool-desc">${t.description || ''}</div>`;
-                toolsList.appendChild(li);
+
+            // 分类工具
+            var apkTools = [];
+            var builtinTools = [];
+            tools.forEach(function(t) {
+                if (t.name && t.name.indexOf('mt_apk_') === 0) {
+                    apkTools.push(t);
+                } else {
+                    builtinTools.push(t);
+                }
             });
+
+            // 内置工具
+            if (builtinTools.length > 0) {
+                var catHeader = document.createElement('li');
+                catHeader.style.cssText = 'font-size:11px; font-weight:600; color:#64748b; padding:4px 8px 2px; text-transform:uppercase; letter-spacing:0.5px;';
+                catHeader.textContent = '内置工具';
+                toolsList.appendChild(catHeader);
+                builtinTools.forEach(function(t) {
+                    toolsList.appendChild(createToolItem(t));
+                });
+            }
+
+            // APK 工具
+            if (apkTools.length > 0) {
+                var apkHeader = document.createElement('li');
+                apkHeader.style.cssText = 'font-size:11px; font-weight:600; color:#64748b; padding:8px 8px 2px; text-transform:uppercase; letter-spacing:0.5px;';
+                apkHeader.innerHTML = 'APK 工具 <span style="background:#ede9fe; color:#7c3aed; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">MT</span>';
+                toolsList.appendChild(apkHeader);
+                apkTools.forEach(function(t) {
+                    toolsList.appendChild(createToolItem(t, true));
+                });
+            }
+        }
+
+        function createToolItem(t, isApk) {
+            var li = document.createElement('li');
+            li.className = 'tool-item';
+            li.onclick = function() { chatInput.value = '/call ' + t.name + ' {}';
+                chatInput.focus(); };
+            var badgeHtml = isApk ? '<span style="background:#ede9fe; color:#7c3aed; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px; font-weight:500;">APK</span>' : '';
+            li.innerHTML = '<div class="tool-name">' + escapeHtml(t.name) + badgeHtml + '</div><div class="tool-desc">' + escapeHtml(t.description || '') + '</div>';
+            return li;
         }
 
         // ============================================================
@@ -1603,7 +1702,7 @@
                     toolCount.textContent = tools.length;
                     setMcpStatus(true, '已连接');
                     setSessionStatus('就绪');
-                    addSystemMessage(`连接成功，加载 ${tools.length} 个工具。输入 /help 查看完整命令，或点击侧边栏工具快速调用。`);
+                    addSystemMessage('连接成功，加载 ' + tools.length + ' 个工具。输入 /help 查看完整命令，或点击侧边栏工具快速调用。');
                 } else {
                     setMcpStatus(false, '工具获取失败');
                     setSessionStatus('失败');
@@ -1752,6 +1851,9 @@
                             <code>sh</code> Shell 脚本文件，参数: script, args, timeout<br><br>
                             <strong>🔢 计算工具（1个）</strong><br>
                             <code>math_calculator</code> 数学计算，参数: expression<br><br>
+                            <strong>📦 APK 工具（MT 管理器）</strong><br>
+                            通过 MT 管理器提供 APK 相关操作，以 <code>mt_apk_*</code> 前缀命名。<br>
+                            连接 MT 管理器后自动加载，点击侧边栏 APK 工具可快速调用。<br><br>
                             💡 也可直接输入 JSON-RPC 请求，或用自然语言描述让 AI 调用工具。
                         `;
                         addSystemMessage(helpText);

@@ -1330,23 +1330,6 @@ public class McpServer {
                             log("[TOOL] 返回给 LLM:\n" + toolResultMsg.toString(2));
                             currentMessage = toolResultMsg.toString();
 
-                            // 防止循环：工具执行后，在工具结果中附加文本回复指令
-                            if (toolCallCount >= 1) {
-                                log("[LOOP] 第 " + toolCallCount + " 次工具调用完成，附加文本回复指令");
-                                // 在工具结果的末尾附加指令
-                                try {
-                                    JSONArray arr = toolResultMsg.getJSONObject("result").getJSONArray("content");
-                                    JSONObject extra = new JSONObject();
-                                    extra.put("type", "text");
-                                    extra.put("text", "\n\n[系统指令] 工具已执行完成。请直接用自然语言回复用户，总结工具执行结果。禁止再次调用任何工具。");
-                                    arr.put(extra);
-                                    currentMessage = toolResultMsg.toString();
-                                } catch (Exception e) {
-                                    // 如果修改失败，用原始工具结果
-                                    log("[LOOP] 附加指令失败: " + e.getMessage());
-                                }
-                            }
-
                             log("[ROUND] 准备下一轮");
 
                             // 待办计划：每次工具调用后向 LLM 同步最新进度

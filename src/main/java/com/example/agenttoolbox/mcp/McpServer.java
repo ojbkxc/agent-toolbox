@@ -765,7 +765,7 @@ public class McpServer {
 
                         // Conversation loop
                         String currentMessage = message;
-                        int maxRounds = 10;
+                        int maxRounds = 100;
                         int round = 0;
                         boolean finalDone = false;
                         int toolCallCount = 0; // 防止工具调用循环

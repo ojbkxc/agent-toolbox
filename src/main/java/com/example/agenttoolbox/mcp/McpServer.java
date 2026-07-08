@@ -1207,7 +1207,7 @@ public class McpServer {
                                             try {
                                                 writePlanEvent(out, cachedSession.planState, "complete");
                                                 JSONObject doneJ = new JSONObject();
-                                                doneJ.put("content", summary);
+                                                doneJ.put("content", content + "\n\n---\n" + summary);
                                                 doneJ.put("round", currentRound);
                                                 doneJ.put("isToolCall", false);
                                                 doneJ.put("planComplete", true);

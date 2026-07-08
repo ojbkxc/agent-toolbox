@@ -97,7 +97,7 @@ public class PythonTool implements Tool {
 
         String code;
         if (isInline) {
-            code = script;
+            code = normalizeCode(script);
         } else {
             // 读取脚本文件内容
             java.io.File file = FilePathResolver.resolveForRead(script);
@@ -139,6 +139,28 @@ public class PythonTool implements Tool {
             sb.append(line).append("\n");
         }
         br.close();
+        return sb.toString();
+    }
+
+    /**
+     * 规范化 Python 代码：处理可能的 JSON 转义问题，统一缩进
+     */
+    private String normalizeCode(String code) {
+        if (code == null) return "";
+        // 1. 如果 JSON 解析未转义 \\n，手动替换文本形式的 \\n 为实际换行
+        String result = code.replace("\\n", "\n");
+        // 2. 统一行尾 (CRLF → LF)
+        result = result.replace("\r\n", "\n").replace("\r", "\n");
+        // 3. 将 Tab 替换为 4 空格
+        result = result.replace("\t", "    ");
+        // 4. 去除每行末尾的空白
+        String[] lines = result.split("\n", -1);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            String trimmed = lines[i].replaceFirst("\\s+$", "");
+            if (i > 0) sb.append("\n");
+            sb.append(trimmed);
+        }
         return sb.toString();
     }
 }

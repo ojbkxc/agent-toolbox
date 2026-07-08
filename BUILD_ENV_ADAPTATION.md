@@ -58,7 +58,7 @@ kotlin.code.style=official
 - Kotlin 版本 1.6.21 与 Gradle 7.5.1 兼容
 
 ### Android SDK
-- compileSdk: 35
+- compileSdk: 33
 - minSdk: 24
 - targetSdk: 32
 - NDK ABI: arm64-v8a

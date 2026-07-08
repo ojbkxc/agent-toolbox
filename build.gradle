@@ -19,7 +19,7 @@ buildDir = new File('/storage/emulated/0/Download/agent-toolbox-main/build')
 
 android {
     namespace 'com.example.agenttoolbox'
-    compileSdk 35
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.example.agenttoolbox"

@@ -769,9 +769,6 @@ public class McpServer {
                         int round = 0;
                         boolean finalDone = false;
                         int toolCallCount = 0; // 防止工具调用循环
-                        // 计划完成总结是否已推送给前端（避免重复推送）
-                        boolean planCompletePushed = false;
-
                         // 新会话：创建缓存
                         if (isNewSession) {
                             String systemPrompt = ToolManager.getInstance().getSystemPrompt();
@@ -1284,13 +1281,7 @@ public class McpServer {
                             log("[TOOL] 调用请求:\n" + replyJson.toString(2));
 
                             toolCallCount++;
-                            // 保护：计划已完成并已回传工具结果后，LLM 若再次发起工具调用，
-                            // 视为收尾失败，强制结束，避免无限循环
-                            if (planCompletePushed) {
-                                log("[LOOP] 计划完成后 LLM 再次工具调用，强制结束");
-                                finalDone = true;
-                                break;
-                            }
+                            // 保护：计划完成后不再强制拦截，由 LLM 自主决定是否继续
                             long toolStartTime = System.currentTimeMillis();
                             String toolResult = null;
                             boolean toolIsError = false;
@@ -1380,12 +1371,8 @@ public class McpServer {
                                     // (currentMessage=toolResultMsg) 从未发送给 LLM，DeepSeek 网页端
                                     // 看不到工具回复，也无法生成收尾文本。
                                     // 现在改为：保留 currentMessage 作为工具结果让循环继续一轮发给 LLM，
-                                    // 同时把"完成总结"推送给前端测试页，并标记 planCompletePushed
-                                    // 防止下一轮重复推送。LLM 收到工具结果后会生成文本收尾回复，
-                                    // 进入文本回复分支自然结束。
-                                    if (!planCompletePushed) {
-                                        planCompletePushed = true;
-                                        String summary = cachedSession.taskManager.generateSummary(cachedSession.planState);
+                                    // 同时把完成总结推送给前端测试页
+                                    String summary = cachedSession.taskManager.generateSummary(cachedSession.planState);
                                         try {
                                             writePlanEvent(out, cachedSession.planState, "complete");
                                             JSONObject doneJ = new JSONObject();
@@ -1400,7 +1387,6 @@ public class McpServer {
                                         } catch (Exception e) {
                                             log("[PLAN] 推送完成总结失败: " + e.getMessage());
                                         }
-                                    }
                                     // 注意：不设置 finalDone，让循环继续一轮把工具结果发回给 LLM
                                     log("[PLAN] 计划已完成，工具结果将回传给 LLM 以生成收尾回复");
                                 }

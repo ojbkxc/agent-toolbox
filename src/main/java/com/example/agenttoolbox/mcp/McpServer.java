@@ -1284,12 +1284,6 @@ public class McpServer {
                             log("[TOOL] 调用请求:\n" + replyJson.toString(2));
 
                             toolCallCount++;
-                            // 硬限制：超过 3 次工具调用，强制文本回复
-                            if (toolCallCount > 3) {
-                                log("[LOOP] 已执行 " + toolCallCount + " 次工具调用，强制结束");
-                                finalDone = true;
-                                break;
-                            }
                             // 保护：计划已完成并已回传工具结果后，LLM 若再次发起工具调用，
                             // 视为收尾失败，强制结束，避免无限循环
                             if (planCompletePushed) {

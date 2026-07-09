@@ -70,13 +70,15 @@ public class SkillManager {
 
     private void discover() {
         if (context == null) return;
-        discoverAssets();
-        discoverRuntime();
-        // 确保运行时的技能目录存在并输出路径
         File base = new File(context.getExternalFilesDir(null), "skills");
         if (!base.exists()) base.mkdirs();
         Log.i(TAG, "运行时技能目录: " + base.getAbsolutePath());
+        discoverAssets();
+        discoverRuntime();
         Log.i(TAG, "已加载 " + skills.size() + " 个技能，注册工具 " + registeredToolNames.size() + " 个");
+        for (Skill s : skills) {
+            Log.i(TAG, "  技能: " + s.id + " (from=" + (s.fromAssets ? "assets" : "runtime") + ")");
+        }
     }
 
     // ============ 发现：assets 内置 ============
@@ -139,9 +141,15 @@ public class SkillManager {
     // ============ 发现：运行时外部目录 ============
     private void discoverRuntime() {
         File base = new File(context.getExternalFilesDir(null), "skills");
-        if (!base.exists() || !base.isDirectory()) return;
+        if (!base.exists() || !base.isDirectory()) {
+            Log.d(TAG, "运行时技能目录不存在: " + base.getAbsolutePath());
+            return;
+        }
         File[] dirs = base.listFiles();
-        if (dirs == null) return;
+        if (dirs == null || dirs.length == 0) {
+            Log.d(TAG, "运行时技能目录为空: " + base.getAbsolutePath());
+            return;
+        }
         for (File d : dirs) {
             if (!d.isDirectory()) continue;
             try {

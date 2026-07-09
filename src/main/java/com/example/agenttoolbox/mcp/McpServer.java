@@ -502,54 +502,68 @@ public class McpServer {
         /**
          * 修复 JSON 字符串值内部未转义的双引号。
          * DeepSeek 网页渲染时可能把 JSON 字符串值中的 \" 显示为未转义的 "，
+         * 或 LLM 在 script 等字段里直接写了带双引号的代码（如 input("x")），
          * 导致 JSONObject 解析失败。
          *
-         * 算法：找到 content 字段的值边界，将其内部所有的 " 转义为 \"，
-         * 然后重新组装 JSON 字符串。这种方法正确处理嵌套 JSON 作为字符串值的情况。
+         * 算法：对 content / text / script 等已知字符串字段，找到其值边界，
+         * 仅将「未转义」的双引号（前面不是反斜杠）转义为 \"，已转义的 \" 保持不动，
+         * 避免把正确转义二次转义成 \\\"。
          */
         private String fixUnescapedQuotes(String jsonStr) {
             if (jsonStr == null || jsonStr.isEmpty()) return jsonStr;
-            
-            // 找 "content" 字段的值边界
-            int ctIdx = jsonStr.indexOf("\"content\"");
-            if (ctIdx < 0) ctIdx = jsonStr.indexOf("\"text\"");
-            if (ctIdx < 0) return jsonStr;  // 没有需要修复的字段
-            
-            int colonIdx = jsonStr.indexOf(':', ctIdx + 8);
+            String result = jsonStr;
+            result = fixFieldQuotes(result, "content");
+            result = fixFieldQuotes(result, "text");
+            result = fixFieldQuotes(result, "script");
+            return result;
+        }
+
+        /** 修复某个具名字段值内部的未转义双引号（仅转义未转义者，保留已转义者） */
+        private String fixFieldQuotes(String jsonStr, String field) {
+            String key = "\"" + field + "\"";
+            int idx = jsonStr.indexOf(key);
+            if (idx < 0) return jsonStr;
+            int colonIdx = jsonStr.indexOf(':', idx + key.length());
             if (colonIdx < 0) return jsonStr;
-            
-            // 找到值的起始引号（跳过空白）
+            // 值起始引号
             int valStart = colonIdx + 1;
-            while (valStart < jsonStr.length() && Character.isWhitespace(jsonStr.charAt(valStart))) {
-                valStart++;
-            }
+            while (valStart < jsonStr.length() && Character.isWhitespace(jsonStr.charAt(valStart))) valStart++;
             if (valStart >= jsonStr.length() || jsonStr.charAt(valStart) != '"') return jsonStr;
             valStart++; // 跳过起始引号
-            
-            // 从末尾往前找值的结束引号（后跟 , 或 } 或 ]）
+            // 从末尾往前找值的结束引号（其后紧跟 , } ]）
             int valEnd = -1;
             for (int i = jsonStr.length() - 1; i > valStart; i--) {
                 if (jsonStr.charAt(i) == '"') {
                     int j = i + 1;
-                    while (j < jsonStr.length() && Character.isWhitespace(jsonStr.charAt(j))) {
-                        j++;
-                    }
+                    while (j < jsonStr.length() && Character.isWhitespace(jsonStr.charAt(j))) j++;
                     if (j < jsonStr.length()) {
                         char next = jsonStr.charAt(j);
-                        if (next == ',' || next == '}' || next == ']') {
-                            valEnd = i;
-                            break;
-                        }
+                        if (next == ',' || next == '}' || next == ']') { valEnd = i; break; }
                     }
                 }
             }
             if (valEnd <= valStart) return jsonStr;
-            
-            // 提取值内容，转义内部的 "，然后重新组装
             String content = jsonStr.substring(valStart, valEnd);
-            String escaped = content.replace("\"", "\\\"");
-            
+            String escaped = escapeUnescapedQuotes(content);
             return jsonStr.substring(0, valStart) + escaped + jsonStr.substring(valEnd);
+        }
+
+        /** 仅转义未转义的双引号：前面不是反斜杠的 " 才转义为 \" */
+        private String escapeUnescapedQuotes(String content) {
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < content.length(); k++) {
+                char c = content.charAt(k);
+                if (c == '"') {
+                    if (k > 0 && content.charAt(k - 1) == '\\') {
+                        sb.append(c); // 已是转义引号 \"，保留
+                    } else {
+                        sb.append("\\\""); // 转义未转义引号
+                    }
+                } else {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
         }
 
         /**
@@ -769,6 +783,8 @@ public class McpServer {
                         int round = 0;
                         boolean finalDone = false;
                         int toolCallCount = 0; // 防止工具调用循环
+                        int jsonParseFailCount = 0; // JSON 解析失败重试计数，防止死循环烧光轮次
+                        final int MAX_JSON_PARSE_RETRY = 3; // 解析失败最多回灌 3 次 format_error
                         // 新会话：创建缓存
                         if (isNewSession) {
                             String systemPrompt = ToolManager.getInstance().getSystemPrompt();
@@ -1087,8 +1103,30 @@ public class McpServer {
                             // 提取并解析 JSON 回复（JSON-RPC 2.0）
                             JSONObject replyJson = extractJsonObject(reply);
                             if (replyJson == null) {
-                                log("[LLM] 无法提取JSON");
+                                log("[LLM] 无法提取JSON（即使尝试修复未转义引号后仍失败）");
                                 log("[LLM] 回复全文 (" + reply.length() + " 字符):\n" + reply);
+                                jsonParseFailCount++;
+                                if (jsonParseFailCount <= MAX_JSON_PARSE_RETRY) {
+                                    // 兜底：把原始回复反馈给 LLM，要求输出合法 JSON-RPC，保住反馈链路
+                                    String ve = "你的回复不是合法的 JSON-RPC 2.0 结构（解析失败，可能含未转义引号、"
+                                            + "括号不匹配或粘连了多余文本）。请只输出一个完整 JSON 对象，例如："
+                                            + "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\","
+                                            + "\"params\":{\"name\":\"...\",\"arguments\":{...}},\"id\":" + currentRound + "}"
+                                            + " 或 {\"jsonrpc\":\"2.0\",\"result\":{\"type\":\"reply\",\"content\":\"...\"},"
+                                            + "\"id\":" + currentRound + "}。注意：字符串内部的双引号必须转义为 \\\"。";
+                                    log("[JSON-FALLBACK] 解析失败第 " + jsonParseFailCount + "/" + MAX_JSON_PARSE_RETRY
+                                            + " 次，回灌 format_error 让 LLM 重输出");
+                                    String planMsg = buildPlanMessage("format_error", null, null, conversationId,
+                                            ve + "\n\n请修正后重新输出完整 JSON（不要附带任何解释文本）。");
+                                    if (planMsg != null) {
+                                        currentMessage = planMsg;
+                                    } else {
+                                        currentMessage = "【系统反馈】\n" + ve
+                                                + "\n\n请修正后重新输出完整 JSON（不要附带任何解释文本）。";
+                                    }
+                                    continue;
+                                }
+                                log("[JSON-FALLBACK] 解析失败超过 " + MAX_JSON_PARSE_RETRY + " 次，结束对话");
                                 finalDone = true;
                                 log("[DONE] 对话完成");
                                 break;

@@ -529,8 +529,8 @@ public class DeepSeekChatBridge {
             "    // 解析 JSON\n" +
             "    var parsed = parseJsonRpc(rawText);\n" +
             "    if (!parsed) {\n" +
-            "      Android.log('[JS] JSON 解析失败, rawText=' + rawText);\n" +
-            "      finish(makeReject('回复不是合法的 JSON（可能含未转义引号或语法错误）', rawText));\n" +
+            "      Android.log('[JS] JSON 解析失败, 转交 Java 修复未转义引号, rawText=' + rawText);\n" +
+            "      finish(rawText);\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +

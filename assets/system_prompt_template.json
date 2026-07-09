@@ -68,13 +68,14 @@
     "Python：直接调用 python 工具，不要用 shell which python 或 shell python3。禁止 os.system/subprocess/ctypes",
     "Python script 字段格式（致命）：换行用 JSON 转义换行符（反斜杠+n），缩进必须是 4 个空格字符的倍数（直接写在字符串中，不要转义、不要用 Tab、不要用 1~3 个空格）；代码内双引号转义为反斜杠+双引号、反斜杠转义为两个反斜杠。缩进不是 4 的倍数会直接导致 IndentationError",
     "GM 流程：检查Root → 进程列表 → 附加进程 → 搜索 → 读写",
-    "MT 与 APK MCP：mt_apk_* 系列工具依赖 MT 管理器内部的 APK MCP 服务。调用前先回复用户告知「请在 MT 管理器中打开侧拉栏 → 工具 → APK MCP，点击启动」，等用户启动后再继续调用。若返回「APK MCP 未连接」说明服务未运行，同样引导用户启动"
+    "MT 与 APK MCP：mt_apk_* 系列工具依赖 MT 管理器内部的 APK MCP 服务。调用前先回复用户告知「请在 MT 管理器中打开侧拉栏 → 工具 → APK MCP，点击启动」，等用户启动后再继续调用。若返回「APK MCP 未连接」说明服务未运行，同样引导用户启动。调用 mt_apk_status 可获取连接诊断报告（TCP 端口 + HTTP 握手状态）。如果自动连接失败，可以用 http_request POST 到 http://127.0.0.1:8787/mcp 手动探测"
   ],
   "server_messages": {
     "工具结果": "工具执行结果，附带 plan 进度：{\"jsonrpc\":\"2.0\",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"结果\"}]},\"plan\":{\"total\":5,\"completed\":1,\"failed\":0,\"active_task\":\"T002\"},\"id\":1001}",
     "系统指令": "计划执行指令 type=system：{\"jsonrpc\":\"2.0\",\"result\":{\"type\":\"system\",\"action\":\"execute_task\",\"task\":{\"task_id\":\"T001\",\"content\":\"任务描述\",\"tool_needs\":[\"file_read\"]},\"plan\":{\"total\":5,\"completed\":0},\"instruction\":\"请调用对应工具执行\"},\"id\":1001}",
     "格式错误": "格式校验失败 type=system：{\"jsonrpc\":\"2.0\",\"result\":{\"type\":\"system\",\"action\":\"format_error\",\"instruction\":\"错误详情\"},\"id\":1001}",
-    "技能列表": "skills/list 返回结果示例：{\"jsonrpc\":\"2.0\",\"result\":{\"skills\":[{\"id\":\"agent-toolbox\",\"name\":\"agent-toolbox\",\"description\":\"...\",\"when_to_use\":\"...\",\"from\":\"builtin\"}]},\"id\":1001}"
+    "技能列表": "skills/list 返回结果示例：{\"jsonrpc\":\"2.0\",\"result\":{\"skills\":[{\"id\":\"agent-toolbox\",\"name\":\"agent-toolbox\",\"description\":\"...\",\"when_to_use\":\"...\",\"from\":\"builtin\"}]},\"id\":1001}",
+    "技能重载": "skills/reload 返回结果示例：{\"jsonrpc\":\"2.0\",\"result\":{\"skills\":[...],\"reloaded\":true},\"id\":1001}"
   },
   "system_actions": {
     "execute_task": "执行 task 字段指定的任务，调用 task.tool_needs 中对应工具。完成后在 result 中加 plan_update 推进",

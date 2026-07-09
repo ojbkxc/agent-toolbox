@@ -2365,7 +2365,18 @@
          * 添加工具结果卡片到聊天区域
          * 支持 file_write 的 diff 格式展示
          */
-        function addToolResultCard(toolName, result, isError) {
+        function addToolResultCard(toolName, result, isError, appendToMsgEl) {
+            if (appendToMsgEl) {
+                // 追加到已有的 AI 消息气泡下方（保持在同一消息组内）
+                const contentEl = appendToMsgEl.querySelector('.message-content');
+                if (!contentEl) return;
+                const resultDiv = document.createElement('div');
+                resultDiv.style.cssText = 'margin-top: 8px; padding: 10px 14px; border-radius: 12px; font-size: 13px; background: ' + (isError ? '#fef2f2' : '#f8fafc') + '; border: 1px solid ' + (isError ? '#fecaca' : '#e2e8f0') + '; color: ' + (isError ? '#b91c1c' : '#475569') + ';';
+                resultDiv.innerHTML = '<div style="font-weight:600; margin-bottom:4px;">🔧 ' + escapeHtml(toolName) + '</div><div class="md-body" style="white-space:pre-wrap;">' + renderMarkdown(result) + '</div>';
+                contentEl.appendChild(resultDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return;
+            }
             const msgEl = document.createElement('div');
             msgEl.className = 'message server';
 
@@ -2947,7 +2958,7 @@
                         // JSON-RPC 2.0 notification 风格：字段在 params 里
                         const sp = (obj && obj.params) ? obj.params : obj;
                         if (sp && sp.result && sp.tool) {
-                            addToolResultCard(sp.tool, sp.result, sp.isError);
+                            addToolResultCard(sp.tool, sp.result, sp.isError, msgEl);
                         }
                     } else if (eventName === 'plan') {
                         // 计划事件：更新侧边栏待办面板

@@ -485,7 +485,7 @@ public class DeepSeekChatBridge {
             "    if (method === 'tools/call') {\n" +
             "      var payload = JSON.stringify(parsed);\n" +
             "      Android.log('[JS] 检测到工具调用: ' + payload.substring(0, 100));\n" +
-            "      finish(payload);\n" +
+            "      finish(rawText);\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
@@ -496,17 +496,17 @@ public class DeepSeekChatBridge {
             "      // 如果包含 plan_update，传递完整 JSON 让 Java 解析计划更新\n" +
             "      if (result.plan_update) {\n" +
             "        Android.log('[JS] 文本回复(含plan_update): content=' + content);\n" +
-            "        finish(JSON.stringify(parsed));\n" +
+            "        finish(rawText);\n" +
             "      } else {\n" +
             "        Android.log('[JS] 文本回复: type=' + (result.type || 'unknown') + ', content=' + content);\n" +
-            "        finish(content || JSON.stringify(parsed));\n" +
+            "        finish(rawText);\n" +
             "      }\n" +
             "      return;\n" +
             "    }\n" +
             "\n" +
             "    // 其他 JSON 格式，原样返回\n" +
             "    Android.log('[JS] 未知 JSON 格式: ' + JSON.stringify(parsed).substring(0, 60));\n" +
-            "    finish(JSON.stringify(parsed));\n" +
+            "    finish(rawText);\n" +
             "  }\n" +
             "\n" +
             "  window[__prefix + 'poll'] = setInterval(pollOnce, 500);\n" +

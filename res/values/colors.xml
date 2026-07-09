@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主色调：冷色系 -->
+    <color name="primary">#1e293b</color>
+    <color name="primary_dark">#0f172a</color>
+    <color name="accent">#3b82f6</color>
+    <color name="accent_light">#dbeafe</color>
+
+    <!-- 功能色 -->
+    <color name="success">#10b981</color>
+    <color name="success_bg">#d1fae5</color>
+    <color name="warning">#f59e0b</color>
+    <color name="warning_bg">#fef3c7</color>
+    <color name="error">#ef4444</color>
+    <color name="error_bg">#fee2e2</color>
+
+    <!-- 中性色 -->
+    <color name="surface">#ffffff</color>
+    <color name="background">#f1f5f9</color>
+    <color name="background_alt">#f8fafc</color>
+    <color name="border">#e2e8f0</color>
+    <color name="border_light">#eef2f6</color>
+
+    <!-- 文字色 -->
+    <color name="text_primary">#0f172a</color>
+    <color name="text_secondary">#475569</color>
+    <color name="text_muted">#94a3b8</color>
+    <color name="text_inverse">#ffffff</color>
+
+    <!-- 阴影 -->
+    <color name="shadow">#000000</color>
+</resources>

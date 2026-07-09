@@ -497,11 +497,25 @@ public class JavaScriptBridge {
             "  // 启动" +
             "  startObserving();" +
             "  " +
-            "  // 兜底轮询：每2秒扫描一次消息，防止MutationObserver在后台被挂起" +
-            "  // 特别是悬浮窗小窗模式下，WebView可能被系统优化导致Observer不触发" +
-            "  setInterval(function() {" +
-            "    scanAllMessages();" +
-            "  }, 2000);" +
+            "  // 首次扫描后关掉轮询，后续只靠 MutationObserver 增量处理新消息" +
+            "  var fullScanDone = false;" +
+            "  var pollingTimer = setInterval(function() {" +
+            "    if (!fullScanDone) {" +
+            "      var total = 0;" +
+            "      var selectors = ['.message', '.chat-message', '.msg', '[data-testid*=\"message\"]', '.prose', '.markdown-body'];" +
+            "      for (var i = 0; i < selectors.length; i++) {" +
+            "        var els = document.querySelectorAll(selectors[i]);" +
+            "        for (var j = 0; j < els.length; j++) {" +
+            "          total++; checkMessageForToolCall(els[j]);" +
+            "        }" +
+            "      }" +
+            "      if (processedMessages.size >= total && total > 0) {" +
+            "        fullScanDone = true;" +
+            "        clearInterval(pollingTimer);" +
+            "        Android.log('初始扫描完成（共 ' + total + ' 条消息），关闭轮询，后续靠 MutationObserver');" +
+            "      }" +
+            "    }" +
+            "  }, 1500);" +
             "})()";
     }
 

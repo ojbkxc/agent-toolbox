@@ -536,7 +536,7 @@ public class DeepSeekChatBridge {
             "\n" +
             "    var vReason = validateJsonRpc(parsed);\n" +
             "    if (vReason) {\n" +
-            "      Android.log('[JS] 格式校验不通过: ' + vReason);\n" +
+            "      Android.log('[JS] 格式校验不通过: ' + vReason + ' | rawText=' + rawText);\n" +
             "      finish(makeReject(vReason, rawText));\n" +
             "      return;\n" +
             "    }\n" +

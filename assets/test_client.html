@@ -2367,13 +2367,18 @@
          */
         function addToolResultCard(toolName, result, isError, appendToMsgEl) {
             if (appendToMsgEl) {
-                // 追加到已有的 AI 消息气泡下方（保持在同一消息组内）
+                // 插到已有 AI 消息的标签和气泡之间（工具结果在上，文字回复在下）
                 const contentEl = appendToMsgEl.querySelector('.message-content');
                 if (!contentEl) return;
                 const resultDiv = document.createElement('div');
                 resultDiv.style.cssText = 'margin-top: 8px; padding: 10px 14px; border-radius: 12px; font-size: 13px; background: ' + (isError ? '#fef2f2' : '#f8fafc') + '; border: 1px solid ' + (isError ? '#fecaca' : '#e2e8f0') + '; color: ' + (isError ? '#b91c1c' : '#475569') + ';';
                 resultDiv.innerHTML = '<div style="font-weight:600; margin-bottom:4px;">🔧 ' + escapeHtml(toolName) + '</div><div class="md-body" style="white-space:pre-wrap;">' + renderMarkdown(result) + '</div>';
-                contentEl.appendChild(resultDiv);
+                const bubbleEl = contentEl.querySelector('.message-bubble');
+                if (bubbleEl) {
+                    contentEl.insertBefore(resultDiv, bubbleEl);
+                } else {
+                    contentEl.appendChild(resultDiv);
+                }
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 return;
             }

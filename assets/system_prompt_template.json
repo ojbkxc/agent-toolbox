@@ -499,6 +499,38 @@
         },
         "id": 1001
       }
+    },
+    {
+      "step": "向用户提问确认",
+      "call": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "ask",
+          "arguments": {
+            "question": "是否继续执行？",
+            "options": ["继续", "取消"]
+          }
+        },
+        "id": 1001
+      }
+    },
+    {
+      "step": "搜索文件",
+      "call": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "file_search",
+          "arguments": {
+            "keywords": ["config", "json"],
+            "path": "/sdcard/Download",
+            "search_content": false,
+            "max_results": 20
+          }
+        },
+        "id": 1001
+      }
     }
   ],
   "tool_result_format": {

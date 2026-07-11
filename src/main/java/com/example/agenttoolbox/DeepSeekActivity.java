@@ -1115,4 +1115,3 @@ public class DeepSeekActivity extends Activity {
         }
         super.onDestroy();
     }
-}

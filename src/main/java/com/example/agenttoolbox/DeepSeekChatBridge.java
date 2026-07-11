@@ -11,8 +11,6 @@ import org.json.JSONObject;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,7 +53,6 @@ public class DeepSeekChatBridge {
     // ---- 并发请求管理：每个 requestId 保存一份回调 ----
     private final AtomicLong requestIdCounter = new AtomicLong(0);
     private final ConcurrentHashMap<String, StreamCallback> callbacksById = new ConcurrentHashMap<>();
-    private final ExecutorService threadPool = Executors.newCachedThreadPool();
     private final ConcurrentHashMap<String, CountDownLatch> latchById = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicReference<String>> replyById = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicReference<String>> errorById = new ConcurrentHashMap<>();
@@ -99,13 +96,6 @@ public class DeepSeekChatBridge {
     public synchronized boolean isRegistered() { return boundWebView != null; }
     public synchronized boolean isWebViewLoaded() { return webViewLoaded && boundWebView != null; }
     public synchronized void markAsLoaded() { this.webViewLoaded = true; }
-
-    /** 关闭线程池 */
-    public synchronized void shutdown() {
-        if (threadPool != null && !threadPool.isShutdown()) {
-            threadPool.shutdownNow();
-        }
-    }
 
     /**
      * 流式回调接口
@@ -210,7 +200,7 @@ public class DeepSeekChatBridge {
                 injectChatScript(wb, requestId, message);
 
                 // 后台线程等待完成，以便调 onDone / onError
-                threadPool.execute(new Runnable() {
+                new Thread(new Runnable() {
                     @Override
                     public void run() {
                         try {
@@ -248,8 +238,8 @@ public class DeepSeekChatBridge {
                             cleanupRequest(requestId);
                         }
                     }
-            });
-        }
+                });
+            }
         });
     }
 
@@ -300,9 +290,7 @@ public class DeepSeekChatBridge {
             "    initialLastAiLen = extractReply(lastAiInit).length;\n" +
             "  }\n" +
             "  Android.log('[JS] 初始AI回复数=' + initialAiCount + ', initialLastAiLen=' + initialLastAiLen + ', url=' + window.location.href);\n" +
-            "  // 探测选择器（仅前 5 轮执行，之后跳过减少 DOM 扫描）\n" +
-            "  var probeResult = [];\n" +
-            "  if (pollCount < 5) {\n" +
+            "  // 选择器探测：输出多种可能选择器的匹配数，定位正确的 AI 回复元素\n" +
             "  var probeSelectors = [\n" +
             "    '.ds-assistant-message-main-content',\n" +
             "    '[class*=\"ds-assistant-message\"]',\n" +
@@ -313,12 +301,12 @@ public class DeepSeekChatBridge {
             "    '[class*=\"message-content\"]',\n" +
             "    '[class*=\"content\"]'\n" +
             "  ];\n" +
+            "  var probeResult = [];\n" +
             "  for (var pi = 0; pi < probeSelectors.length; pi++) {\n" +
             "    var pcount = document.querySelectorAll(probeSelectors[pi]).length;\n" +
             "    probeResult.push(probeSelectors[pi] + '=' + pcount);\n" +
             "  }\n" +
             "  Android.log('[JS] 选择器探测: ' + probeResult.join(', '));\n" +
-            "  }\n" +
             "\n" +
             "  function isSendButtonReady() {\n" +
             "    // 只检查发送按钮元素内部的 path，不遍历全页 SVG\n" +
@@ -496,12 +484,6 @@ public class DeepSeekChatBridge {
             "      finish('');\n" +
             "      return;\n" +
             "    }\n" +
-            "    // 长对话自适应降频：30 轮后从 1200ms 降到 2500ms\n" +
-            "    if (pollCount === 30 && window[__prefix + 'poll']) {\n" +
-            "      clearInterval(window[__prefix + 'poll']);\n" +
-            "      window[__prefix + 'poll'] = setInterval(pollOnce, 2500);\n" +
-            "      Android.log('[JS] 长对话降频: interval 1200→2500');\n" +
-            "    }\n" +
             "\n" +
             "    // 每 10 次轮询（约 5 秒）输出一次诊断状态\n" +
             "    if (pollCount % 10 === 0) {\n" +
@@ -600,9 +582,8 @@ public class DeepSeekChatBridge {
             "    finish(rawText);\n" +
             "  }\n" +
             "\n" +
-            "  var pollInterval = 1200;\n" +
-            "  window[__prefix + 'poll'] = setInterval(pollOnce, pollInterval);\n" +
-            "  Android.log('[JS] 轮询启动, 每 ' + pollInterval + 'ms, 初始AI回复数=' + initialAiCount);\n" +
+            "  window[__prefix + 'poll'] = setInterval(pollOnce, 500);\n" +
+            "  Android.log('[JS] 轮询启动, 每 500ms, 初始AI回复数=' + initialAiCount);\n" +
             "  return 'observer_started_' + __rid;\n" +
             "  } catch(e) {\n" +
             "    try { Android.log('[JS] observerScript 异常: ' + e + ', stack=' + (e.stack||'')); } catch(e2) {}\n" +

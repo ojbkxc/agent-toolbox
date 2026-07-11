@@ -2754,7 +2754,8 @@
             var bubbleEl = contentEl.querySelector('.message-bubble');
             if (!bubbleEl) return;
 
-            var streamContent = lastText;
+            var streamContent = '';
+            var userMessage = lastText;
             var renderTimer = null;
             var pendingRender = false;
 
@@ -2801,7 +2802,7 @@
                     var data = await res.json();
                     if (data && (data.success !== false) && (data.reply || (data.data && data.data.reply))) {
                         var reply = data.reply || (data.data && data.data.reply) || '';
-                        streamContent = lastText + reply;
+                        streamContent = reply;
                         bubbleEl.innerHTML = '<div class="md-body">' + renderMarkdown(streamContent) + '</div>';
                         setState('完成');
                     } else {
@@ -2835,7 +2836,7 @@
 
                     if (eventName === 'chunk') {
                         if (obj && typeof obj.content === 'string') {
-                            streamContent = lastText + obj.content;
+                            streamContent += obj.content;
                             scheduleRender();
                         }
                     } else if (eventName === 'plan') {
@@ -2878,7 +2879,7 @@
                 }
 
                 if (!gotDone) {
-                    if (!streamContent || streamContent === lastText) {
+                    if (!streamContent) {
                         addSystemMessage('继续生成失败');
                     }
                 }
@@ -2888,8 +2889,8 @@
                     renderTimer = null;
                 }
 
-                var displayText = finalContent ? (lastText + finalContent) : streamContent;
-                if (displayText && displayText !== lastText) {
+                var displayText = finalContent || streamContent;
+                if (displayText) {
                     bubbleEl.innerHTML = '<div class="md-body">' + renderMarkdown(displayText) + '</div>';
                     if (canContinue) {
                         addContinueButton(contentEl, displayText);

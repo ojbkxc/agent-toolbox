@@ -22,6 +22,9 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -54,6 +57,7 @@ public class McpServer {
     private ServerSocket serverSocket;
     private boolean running = false;
     private Thread serverThread;
+    private ExecutorService threadPool;
     private static boolean serverRunning = false;
 
     public static boolean isServiceRunning() {
@@ -94,6 +98,7 @@ public class McpServer {
         serverSocket = new ServerSocket(port);
         running = true;
         serverRunning = true;
+        threadPool = Executors.newCachedThreadPool();
 
         serverThread = new Thread(new Runnable() {
             @Override
@@ -105,7 +110,7 @@ public class McpServer {
                 while (running) {
                     try {
                         Socket clientSocket = serverSocket.accept();
-                        new Thread(new ClientHandler(clientSocket)).start();
+                        threadPool.execute(new ClientHandler(clientSocket));
                     } catch (IOException e) {
                         if (running) {
                             log("接受连接失败: " + e.getMessage());
@@ -126,6 +131,9 @@ public class McpServer {
             }
         } catch (IOException e) {
             log("关闭服务失败: " + e.getMessage());
+        }
+        if (threadPool != null) {
+            threadPool.shutdownNow();
         }
         log("MCP服务已停止");
     }

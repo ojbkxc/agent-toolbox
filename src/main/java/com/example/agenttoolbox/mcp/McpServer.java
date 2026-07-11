@@ -752,7 +752,7 @@ public class McpServer {
                         // 用于标记是否正在接收工具调用 JSON 流：当检测到工具调用时设为 true，接收完成后设为 false
                         final AtomicBoolean inToolCallStream = new AtomicBoolean(false);
 
-                        threadPool.execute(new Runnable() {
+                        Thread heartbeat = new Thread(new Runnable() {
                             @Override
                             public void run() {
                                 try {

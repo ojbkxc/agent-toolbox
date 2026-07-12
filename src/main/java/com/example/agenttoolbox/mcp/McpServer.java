@@ -273,7 +273,7 @@ public class McpServer {
         public void run() {
             try {
                 BufferedReader in = new BufferedReader(
-                    new InputStreamReader(clientSocket.getInputStream()));
+                    new InputStreamReader(clientSocket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
                 OutputStream out = clientSocket.getOutputStream();
 
                 // 设置 socket 超时，防止恶意连接永久阻塞

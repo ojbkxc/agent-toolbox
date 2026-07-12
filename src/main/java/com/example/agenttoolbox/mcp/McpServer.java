@@ -277,7 +277,7 @@ public class McpServer {
                 OutputStream out = clientSocket.getOutputStream();
 
                 // 设置 socket 超时，防止恶意连接永久阻塞
-                clientSocket.setSoTimeout(30000);
+                clientSocket.setSoTimeout(300000);
 
                 String requestLine = in.readLine();
                 if (requestLine == null) {

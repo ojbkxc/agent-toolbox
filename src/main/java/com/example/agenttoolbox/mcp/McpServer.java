@@ -26,7 +26,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,6 +59,7 @@ public class McpServer {
     private boolean running = false;
     private Thread serverThread;
     private ExecutorService threadPool;
+    private ExecutorService sseThreadPool;
     private static volatile boolean serverRunning = false;
 
     public static boolean isServiceRunning() {
@@ -94,6 +94,8 @@ public class McpServer {
         }
         // 也输出到 logcat，便于 adb 调试
         Log.d("McpServer", message);
+        // 路由到 AppLogger 以写入本地日志文件
+        AppLogger.i("McpServer", message);
     }
 
     /**
@@ -153,10 +155,24 @@ public class McpServer {
         serverSocket.bind(new InetSocketAddress(bindAddr, port), 64);
         running = true;
         serverRunning = true;
+        // 通用 HTTP 请求线程池（8-16 线程，CallerRunsPolicy 防止静默丢请求）
         threadPool = new java.util.concurrent.ThreadPoolExecutor(
-            4, 32, 60L, java.util.concurrent.TimeUnit.SECONDS,
-            new java.util.concurrent.LinkedBlockingQueue<Runnable>(64),
-            new java.util.concurrent.ThreadPoolExecutor.DiscardPolicy());
+            8, 16, 60L, java.util.concurrent.TimeUnit.SECONDS,
+            new java.util.concurrent.LinkedBlockingQueue<Runnable>(128),
+            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+
+        // SSE 聊天专用线程池（独立线程池，避免长连接饿死普通工具调用）
+        sseThreadPool = java.util.concurrent.Executors.newCachedThreadPool(
+            new java.util.concurrent.ThreadFactory() {
+                private final java.util.concurrent.atomic.AtomicInteger count =
+                    new java.util.concurrent.atomic.AtomicInteger(0);
+                @Override
+                public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "McpSSE-" + count.incrementAndGet());
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
 
         serverThread = new Thread(new Runnable() {
             @Override
@@ -197,6 +213,9 @@ public class McpServer {
         }
         if (threadPool != null) {
             threadPool.shutdownNow();
+        }
+        if (sseThreadPool != null) {
+            sseThreadPool.shutdownNow();
         }
         // 清理会话缓存，防止内存泄漏
         SessionCache.getInstance().clear();
@@ -264,6 +283,7 @@ public class McpServer {
         private Socket clientSocket;
         private Handler writeHandler;
         private HandlerThread writeThread;
+        private boolean sseTransferred = false;
 
         public ClientHandler(Socket socket) {
             this.clientSocket = socket;
@@ -322,10 +342,13 @@ public class McpServer {
                     sendErrorResponse(out, 405, "Method Not Allowed");
                 }
 
-                out.flush();
-                rawIn.close();
-                out.close();
-                clientSocket.close();
+                // SSE 路径由 SSE 线程池负责关闭 socket，此处不做处理
+                if (!sseTransferred) {
+                    out.flush();
+                    rawIn.close();
+                    out.close();
+                    clientSocket.close();
+                }
 
             } catch (Exception e) {
                 log("处理客户端请求失败: " + e.getMessage());
@@ -490,13 +513,39 @@ public class McpServer {
                 return;
             }
 
-            // 优先处理 /api/chat/ 路径（这些端点允许空 JSON 对象 {}）
+            // 优先处理 /api/chat/ 路径
             if (path.startsWith("/api/chat/")) {
                 
                 log("[REQ] " + path);
                 log("[MCP] 请求体长度: " + (requestBody == null ? 0 : requestBody.length()) + " 字符");
                 log("[MCP] 请求:\n" + requestBody);
                 
+                // /api/chat/send 是长连接 SSE 路径，提交到独立线程池避免饿死普通工具调用
+                if ("/api/chat/send".equals(path)) {
+                    sseTransferred = true;
+                    final Socket sock = clientSocket;
+                    final String ssePath = path;
+                    final String sseBody = requestBody;
+                    sseThreadPool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                OutputStream sseOut = sock.getOutputStream();
+                                handleChatRequest(ssePath, sseBody, sseOut);
+                                sseOut.flush();
+                                sseOut.close();
+                                sock.close();
+                                log("[SSE] SSE 线程已完成，socket 已关闭");
+                            } catch (Exception e) {
+                                log("[SSE] SSE 线程异常: " + e.getMessage());
+                                try { if (!sock.isClosed()) sock.close(); } catch (Exception ignored) {}
+                            }
+                        }
+                    });
+                    return;
+                }
+                
+                // 其他 /api/chat/* 路径（sessions/select/new/status）为快速 API，直接处理
                 handleChatRequest(path, requestBody, out);
                 return;
             }

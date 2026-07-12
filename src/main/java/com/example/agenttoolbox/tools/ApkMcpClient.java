@@ -26,12 +26,9 @@ public class ApkMcpClient {
     private boolean enabled = true; // 默认启用，MT 未运行时会静默跳过
     private JSONArray remoteTools = new JSONArray();
     private int requestId = 0;
-    private android.content.Context appContext;
-
     private ApkMcpClient() {}
 
     public void setContext(android.content.Context ctx) {
-        this.appContext = ctx.getApplicationContext();
     }
 
     public static synchronized ApkMcpClient getInstance() {
@@ -195,8 +192,8 @@ public class ApkMcpClient {
 
     /**
      * 发送 MCP 请求（JSON-RPC 2.0）
-     * 经 PythonBridge 执行 Python urllib 发送 HTTP（已验证此通道能通），
-     * 绕过 Java HttpURLConnection 在部分 Android 环境下的兼容性问题。
+     * 使用 Java HttpURLConnection 发送 HTTP POST（与 sendMcpNotification 一致），
+     * 避免 PythonBridge 带来的 GIL 串行化和额外依赖。
      */
     private JSONObject sendMcpRequest(String method, JSONObject params) {
         try {
@@ -210,32 +207,38 @@ public class ApkMcpClient {
             String bodyStr = rpc.toString();
             Log.d(TAG, "请求 [" + id + "]: " + method + " (长度=" + bodyStr.length() + ")");
 
-            // 构造 Python 脚本来发 HTTP POST（复用已验证能通的 Python HTTP 通道）
-            // 对 bodyStr 做 Python 单引号字符串安全转义：\ → \\、' → \'
-            String pyBody = bodyStr.replace("\\", "\\\\").replace("'", "\\'");
-            String pyScript = "import urllib.request\n"
-                    + "url = '" + mcpUrl + "'\n"
-                    + "data = '" + pyBody + "'.encode('utf-8')\n"
-                    + "req = urllib.request.Request(url, data=data,\n"
-                    + "    headers={'Content-Type':'application/json'},\n"
-                    + "    method='POST')\n"
-                    + "try:\n"
-                    + "    resp = urllib.request.urlopen(req, timeout=10)\n"
-                    + "    print(resp.read().decode('utf-8'))\n"
-                    + "except Exception as e:\n"
-                    + "    print('PYHTTP_ERR:' + str(e))\n";
+            URL url = new URL(mcpUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(10000);
 
-            com.example.agenttoolbox.tools.PythonBridge.init(appContext);
-            String result = com.example.agenttoolbox.tools.PythonBridge.exec(pyScript);
-            if (result == null || result.trim().isEmpty()) {
-                Log.w(TAG, method + " Python HTTP 返回空");
+            OutputStream os = conn.getOutputStream();
+            os.write(bodyStr.getBytes("UTF-8"));
+            os.flush();
+            os.close();
+
+            int respCode = conn.getResponseCode();
+            if (respCode != 200) {
+                Log.w(TAG, method + " HTTP " + respCode + ": " + conn.getResponseMessage());
                 return null;
             }
 
-            result = result.trim();
-            if (result.startsWith("PYHTTP_ERR:")) {
-                String errDetail = result.substring(11);
-                Log.w(TAG, method + " Python HTTP 错误: " + errDetail);
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+            conn.disconnect();
+
+            String result = sb.toString().trim();
+            if (result.isEmpty()) {
+                Log.w(TAG, method + " 返回空");
                 return null;
             }
 

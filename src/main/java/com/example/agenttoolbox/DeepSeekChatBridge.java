@@ -34,9 +34,9 @@ public class DeepSeekChatBridge {
 
     private static DeepSeekChatBridge instance;
 
-    // 固定大小线程池，避免每轮对话创建新线程导致 OOM
+    // 动态线程池（按需创建，空闲 60s 回收），避免固定 3 线程堵塞所有后续请求
     private final java.util.concurrent.ExecutorService executorService =
-        java.util.concurrent.Executors.newFixedThreadPool(3, new java.util.concurrent.ThreadFactory() {
+        java.util.concurrent.Executors.newCachedThreadPool(new java.util.concurrent.ThreadFactory() {
             private final java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger(0);
             @Override
             public Thread newThread(Runnable r) {
@@ -228,7 +228,7 @@ public class DeepSeekChatBridge {
                             // 第一阶段：等待 JS observer 捕获回复（120 秒）
                             // 正常情况下 observer 会在几秒内捕获 LLM 回复
                             // 增加超时时间，因为 LLM 生成复杂回复可能需要较长时间
-                            boolean completed = latch.await(120, TimeUnit.SECONDS);
+                            boolean completed = latch.await(60, TimeUnit.SECONDS);
                             AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] latch.await返回: completed=" + completed);
                             StreamCallback cb = callbacksById.get(requestId);
                             if (!completed) {

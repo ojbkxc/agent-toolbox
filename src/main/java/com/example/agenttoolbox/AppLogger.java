@@ -1,15 +1,22 @@
 package com.example.agenttoolbox;
 
+import android.content.Context;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 /**
- * 统一日志门面 — 同时输出到 UI (OnLogListener) 和 logcat
+ * 统一日志门面 — 同时输出到 UI (OnLogListener)、logcat 和本地文件
  * <p>
  * 日志格式: [HH:mm:ss.SSS] [LEVEL] [TAG] 消息
+ * <p>
+ * 文件日志: &lt;filesDir&gt;/logs/mcp.log，超过 1MB 自动清空重写。
  * <p>
  * 支持级别: DEBUG / INFO / WARN / ERROR
  * 支持敏感数据截断: logger.info("TAG", longMessage, 2000) 自动截断超长消息
@@ -24,6 +31,8 @@ public class AppLogger {
     private OnLogListener logListener;
     private boolean logcatEnabled = true;
     private int defaultMaxLen = 0; // 0 = 不限制
+    private File logFile;
+    private static final long MAX_LOG_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault());
 
@@ -50,10 +59,20 @@ public class AppLogger {
 
     /**
      * 初始化（由 MainActivity 在创建 McpServer 前调用）
+     * @param listener UI 日志回调
+     * @param context 用于定位文件存储目录
      */
-    public static synchronized void init(OnLogListener listener) {
+    public static synchronized void init(OnLogListener listener, Context context) {
         AppLogger logger = getInstance();
         logger.logListener = listener;
+        // 初始化文件日志：<filesDir>/logs/mcp.log
+        if (context != null) {
+            File logsDir = new File(context.getFilesDir(), "logs");
+            if (!logsDir.exists()) {
+                logsDir.mkdirs();
+            }
+            logger.logFile = new File(logsDir, "mcp.log");
+        }
     }
 
     /**
@@ -136,6 +155,30 @@ public class AppLogger {
             } else {
                 Log.println(androidLevel, tag, safeMsg != null ? safeMsg : "");
             }
+        }
+
+        // 输出到本地文件（自动处理 1MB 旋转）
+        writeToFile(formattedMsg);
+    }
+
+    /**
+     * 写入日志到本地文件，超过 1MB 自动清空重写。
+     */
+    private synchronized void writeToFile(String message) {
+        if (logFile == null) return;
+        try {
+            // 超过 1MB：清空重写
+            if (logFile.exists() && logFile.length() > MAX_LOG_FILE_SIZE) {
+                logFile.delete();
+                logFile.createNewFile();
+            }
+            FileOutputStream fos = new FileOutputStream(logFile, true); // append
+            OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            writer.write(message);
+            writer.write('\n');
+            writer.close();
+        } catch (Exception ignored) {
+            // 文件日志失败不应影响主流程
         }
     }
 }

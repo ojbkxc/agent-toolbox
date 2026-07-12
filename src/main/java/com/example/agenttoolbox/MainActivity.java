@@ -335,7 +335,7 @@ public class MainActivity extends Activity {
                         }
                     });
                 }
-            });
+            }, MainActivity.this);
             mcpServer.setOnLogListener(new McpServer.OnLogListener() {
                 @Override
                 public void onLog(final String message) {

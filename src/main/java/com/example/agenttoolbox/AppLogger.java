@@ -95,6 +95,10 @@ public class AppLogger {
         getInstance().logInternal(LEVEL_DEBUG, tag, msg, null, 0);
     }
 
+    public static void d(String tag, String msg, Throwable tr) {
+        getInstance().logInternal(LEVEL_DEBUG, tag, msg, tr, 0);
+    }
+
     public static void i(String tag, String msg) {
         getInstance().logInternal(LEVEL_INFO, tag, msg, null, 0);
     }

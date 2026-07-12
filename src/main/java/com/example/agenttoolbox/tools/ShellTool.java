@@ -65,6 +65,12 @@ public class ShellTool implements Tool {
             throw new Exception("命令不能为空");
         }
 
+        // 截获 python 命令，桥接到内嵌 Python 环境
+        String trimmed = command.trim();
+        if (trimmed.startsWith("python3 ") || trimmed.startsWith("python ") || trimmed.equals("python3") || trimmed.equals("python")) {
+            return executePython(trimmed, timeout);
+        }
+
         ProcessRunner.Result result = ProcessRunner.execShell(command, timeout);
 
         StringBuilder sb = new StringBuilder();
@@ -90,6 +96,48 @@ public class ShellTool implements Tool {
             sb.append("\n提示: 命令失败。注意：Python 请直接用 python 工具执行，不要用 shell 调用");
         }
 
+        return sb.toString();
+    }
+
+    /**
+     * 桥接到内嵌 Python 环境处理 python 命令
+     */
+    private String executePython(String cmd, int timeout) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        sb.append("$ ").append(cmd).append("\n");
+        
+        String args = cmd.replaceFirst("^python3?\\s*", "").trim();
+        
+        try {
+            String code;
+            if (args.startsWith("-c ")) {
+                code = args.substring(3).trim();
+                if ((code.startsWith("\"") && code.endsWith("\"")) || 
+                    (code.startsWith("'") && code.endsWith("'"))) {
+                    code = code.substring(1, code.length() - 1);
+                }
+            } else if (!args.isEmpty()) {
+                String path = args;
+                java.io.File file = new java.io.File(path);
+                if (!file.isAbsolute()) {
+                    file = new java.io.File("/sdcard", path);
+                }
+                if (!file.exists()) {
+                    return sb.toString() + "错误: 文件不存在: " + file.getAbsolutePath();
+                }
+                code = new String(java.nio.file.Files.readAllBytes(file.toPath()), "UTF-8");
+            } else {
+                return sb.toString() + 
+                    "内嵌 Python 环境已就绪。请使用 python -c \"代码\" 执行单行代码，\n" +
+                    "或通过 python 工具（tools/call）执行多行代码。\n";
+            }
+            
+            String result = PythonBridge.exec(code);
+            sb.append(result);
+        } catch (Exception e) {
+            sb.append("错误: ").append(e.getMessage());
+        }
+        
         return sb.toString();
     }
 }

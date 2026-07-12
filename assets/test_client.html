@@ -1857,6 +1857,7 @@
         //  连接 MCP
         // ============================================================
         async function connectMcp() {
+            console.log('[MCP] connectMcp 开始执行');
             if (isProcessing) return;
             try {
                 setMcpStatus(false, '连接中…');
@@ -2598,6 +2599,7 @@
         //  DeepSeek 功能
         // ============================================================
         async function checkDeepSeekStatus() {
+            console.log('[MCP] checkDeepSeekStatus 开始执行');
             try {
                 const url = getServerUrl();
                 const res = await fetch(url + '/api/chat/status', {
@@ -3261,18 +3263,23 @@
         //  初始化
         // ============================================================
         window.onload = function() {
-            // 默认移动端显示会话列表
-            if (isMobile()) {
-                chatPanel.classList.add('hidden-mobile');
-                sidebar.classList.remove('hidden-mobile');
-            }
+            try {
+                // 默认移动端显示会话列表
+                if (isMobile()) {
+                    chatPanel.classList.add('hidden-mobile');
+                    sidebar.classList.remove('hidden-mobile');
+                }
 
-            if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-                serverUrlInput.value = window.location.protocol + '//' + window.location.host;
-                setTimeout(connectMcp, 400);
-                setTimeout(checkDeepSeekStatus, 800);
+                if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+                    serverUrlInput.value = window.location.protocol + '//' + window.location.host;
+                    setTimeout(connectMcp, 400);
+                    setTimeout(checkDeepSeekStatus, 800);
+                }
+                addLog('request', '终端已就绪');
+            } catch (e) {
+                console.error('初始化错误:', e);
+                addSystemMessage('页面初始化失败: ' + e.message);
             }
-            addLog('request', '终端已就绪');
         };
     </script>
 

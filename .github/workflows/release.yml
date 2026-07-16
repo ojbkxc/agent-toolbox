@@ -27,9 +27,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Generate Keystore
+        run: |
+          keytool -genkey -v \
+            -keystore release.keystore \
+            -alias release \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=AgentToolbox, OU=Dev, O=AgentToolbox, L=Unknown, ST=Unknown, C=CN"
+
       - name: Generate Gradle Wrapper
         run: |
-          # 在临时目录生成 wrapper，避免系统 Gradle 9.x 加载项目的 AGP 7.2.1 和 AIDE Pro 路径
           cd /tmp
           mkdir -p gradle-gen && cd gradle-gen
           echo 'rootProject.name = "temp"' > settings.gradle
@@ -50,14 +61,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Build Debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
+      - name: Build Release APK
+        run: ./gradlew --no-daemon --stacktrace assembleRelease
 
       - name: Rename APK
         run: |
           mkdir -p release
           TAG_NAME="${{ github.ref_name }}"
-          cp build/outputs/apk/debug/*.apk "release/agent-toolbox-${TAG_NAME}-debug.apk"
+          cp build/outputs/apk/release/*.apk "release/agent-toolbox-${TAG_NAME}-release.apk"
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2

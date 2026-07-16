@@ -21,6 +21,15 @@ android {
     namespace 'com.example.agenttoolbox'
     compileSdk 33
 
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storePassword "android"
+            keyAlias "release"
+            keyPassword "android"
+        }
+    }
+
     defaultConfig {
         applicationId "com.example.agenttoolbox"
         minSdk 24
@@ -30,6 +39,13 @@ android {
 
         ndk {
             abiFilters 'arm64-v8a'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
         }
     }
 

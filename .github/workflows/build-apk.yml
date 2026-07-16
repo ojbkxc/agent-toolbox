@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Fix AIDE Pro hardcoded paths for CI
+        run: |
+          # 移除 gradle.properties 中 AIDE Pro 手机环境的硬编码路径
+          sed -i '/^org.gradle.java.home=/d' gradle.properties
+          sed -i '/^org.gradle.project.buildDir=/d' gradle.properties
+
+          # 注释掉 build.gradle 中的硬编码 buildDir，使用默认 build/ 目录
+          sed -i 's|^buildDir = new File.*|// buildDir: using default (overridden for CI)|' build.gradle
+
+          # 注释掉 settings.gradle 中的硬编码 buildDir
+          sed -i 's|project.buildDir = new File.*|// project.buildDir: using default (overridden for CI)|' settings.gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 7.5.1
+
+      - name: Build Debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-toolbox-debug
+          path: build/outputs/apk/debug/*.apk

@@ -27,6 +27,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Generate Gradle Wrapper
+        run: |
+          # 临时移走 build 文件，避免系统 Gradle 9.x 尝试加载 AGP 7.2.1（不兼容）
+          mv build.gradle build.gradle.bak
+          mv settings.gradle settings.gradle.bak
+          gradle wrapper --gradle-version 7.5.1
+          mv build.gradle.bak build.gradle
+          mv settings.gradle.bak settings.gradle
+
       - name: Fix AIDE Pro hardcoded paths for CI
         run: |
           sed -i '/^org.gradle.java.home=/d' gradle.properties
@@ -36,9 +45,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
-
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version 7.5.1
 
       - name: Build Debug APK
         run: ./gradlew --no-daemon --stacktrace assembleDebug

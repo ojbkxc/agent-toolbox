@@ -29,12 +29,14 @@ jobs:
 
       - name: Generate Gradle Wrapper
         run: |
-          # 临时移走 build 文件，避免系统 Gradle 9.x 尝试加载 AGP 7.2.1（不兼容）
+          # 临时移走所有构建文件，避免系统 Gradle 9.x 加载 AGP 7.2.1 和 AIDE Pro 无效路径
           mv build.gradle build.gradle.bak
           mv settings.gradle settings.gradle.bak
+          mv gradle.properties gradle.properties.bak
           gradle wrapper --gradle-version 7.5.1
           mv build.gradle.bak build.gradle
           mv settings.gradle.bak settings.gradle
+          mv gradle.properties.bak gradle.properties
 
       - name: Fix AIDE Pro hardcoded paths for CI
         run: |
